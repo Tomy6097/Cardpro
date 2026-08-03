@@ -6,7 +6,7 @@ server/node_modules/
 # Environment files
 .env
 server/.env
-client/.env
+# client/.env is NOT ignored - contains public API URL only
 
 # Build output
 client/build/

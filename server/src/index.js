@@ -37,7 +37,12 @@ app.use(helmet({
 
 // CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
+  origin: [
+    process.env.CLIENT_URL,
+    'http://localhost:3000',
+    'https://cardpro-client.onrender.com',
+    /\.onrender\.com$/,
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
