@@ -84,9 +84,35 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/public', publicRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    name: 'Cardpro API',
+    version: '1.0.0',
+    description: 'Professional Event Management Platform',
+    status: 'running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      events: '/api/events',
+      guests: '/api/guests',
+      scanner: '/api/scanner',
+      invitations: '/api/invitations',
+      rsvp: '/api/rsvp',
+      cards: '/api/cards',
+      dashboard: '/api/dashboard',
+      settings: '/api/settings',
+      public: '/api/public',
+    },
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', environment: process.env.NODE_ENV, timestamp: new Date().toISOString() });
+  res.json({ success: true, status: 'ok', environment: process.env.NODE_ENV, timestamp: new Date().toISOString() });
 });
 
 // 404
