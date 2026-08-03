@@ -119,11 +119,20 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     format: 'png',
   });
 
+  // Preserve existing config or set defaults
+  const existing = event.cardTemplate || {};
   event.cardTemplate = {
-    ...event.cardTemplate,
     url: result.secure_url,
     publicId: result.public_id,
+    qrPosition: existing.qrPosition || { x: 70, y: 70 },
+    qrSize: existing.qrSize || 150,
+    guestNamePosition: existing.guestNamePosition || { x: 50, y: 85 },
+    guestNameColor: existing.guestNameColor || '#FFFFFF',
+    guestNameFontSize: existing.guestNameFontSize || 24,
+    guestNameAlign: existing.guestNameAlign || 'center',
+    showQR: existing.showQR !== undefined ? existing.showQR : true,
   };
+
   await event.save();
 
   await logActivity({
@@ -175,16 +184,26 @@ exports.updateCardConfig = asyncHandler(async (req, res) => {
     guestNameFontSize, guestNameAlign, showQR,
   } = req.body;
 
-  event.cardTemplate = {
-    ...event.cardTemplate,
-    qrPosition: qrPosition || event.cardTemplate.qrPosition,
-    qrSize: qrSize || event.cardTemplate.qrSize,
-    guestNamePosition: guestNamePosition || event.cardTemplate.guestNamePosition,
-    guestNameColor: guestNameColor || event.cardTemplate.guestNameColor,
-    guestNameFontSize: guestNameFontSize || event.cardTemplate.guestNameFontSize,
-    guestNameAlign: guestNameAlign || event.cardTemplate.guestNameAlign,
-    showQR: showQR !== undefined ? showQR : event.cardTemplate.showQR,
+  const current = event.cardTemplate || {};
+
+  // Build safe update with defaults
+  const updated = {
+    url: current.url,
+    publicId: current.publicId,
+    qrPosition: qrPosition && typeof qrPosition === 'object'
+      ? { x: Number(qrPosition.x) || 70, y: Number(qrPosition.y) || 70 }
+      : current.qrPosition || { x: 70, y: 70 },
+    qrSize: qrSize !== undefined ? Number(qrSize) : (current.qrSize || 150),
+    guestNamePosition: guestNamePosition && typeof guestNamePosition === 'object'
+      ? { x: Number(guestNamePosition.x) || 50, y: Number(guestNamePosition.y) || 85 }
+      : current.guestNamePosition || { x: 50, y: 85 },
+    guestNameColor: guestNameColor || current.guestNameColor || '#FFFFFF',
+    guestNameFontSize: guestNameFontSize !== undefined ? Number(guestNameFontSize) : (current.guestNameFontSize || 24),
+    guestNameAlign: guestNameAlign || current.guestNameAlign || 'center',
+    showQR: showQR !== undefined ? Boolean(showQR) : (current.showQR !== undefined ? current.showQR : true),
   };
+
+  event.cardTemplate = updated;
   await event.save();
 
   res.json({ success: true, event });
