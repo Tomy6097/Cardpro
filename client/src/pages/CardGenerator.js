@@ -286,8 +286,8 @@ const CardGenerator = () => {
                         fontSize: `${Math.max(8, config.guestNameFontSize * 0.45)}px`,
                         fontFamily: 'Poppins, sans-serif',
                         fontWeight: 700,
-                        textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.4)',
                         letterSpacing: '0.5px',
+                        display: 'block',
                       }}>
                         {sampleName}
                       </span>

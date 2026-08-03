@@ -79,10 +79,31 @@ const autoGenerateQRAndCard = async (guest, event) => {
           ? (width * namePctX) - nameWidth
           : width * namePctX;
 
+      const nameY = height * (1 - namePctY);
+
+      // Draw shadow/outline for readability (dark stroke behind text)
+      const isDarkBg = true; // assume template may have any background
+      const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
+        ? { r: 0, g: 0, b: 0 }   // dark shadow for light text
+        : { r: 1, g: 1, b: 1 };  // light shadow for dark text
+
+      // Draw outline (shadow) first — offset by 1px in 4 directions
+      const offsets = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]];
+      for (const [ox, oy] of offsets) {
+        page.drawText(guest.guestName, {
+          x: nameX + ox, y: nameY + oy,
+          size: fontSize, font,
+          color: rgb(shadowColor.r, shadowColor.g, shadowColor.b),
+          opacity: 0.6,
+        });
+      }
+
+      // Draw main text on top
       page.drawText(guest.guestName, {
-        x: nameX, y: height * (1 - namePctY),
+        x: nameX, y: nameY,
         size: fontSize, font,
         color: rgb(nameColor.r, nameColor.g, nameColor.b),
+        opacity: 1,
       });
 
       const qrSize = cfg.qrSize || 150;

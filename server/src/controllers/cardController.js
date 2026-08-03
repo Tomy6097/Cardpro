@@ -54,7 +54,7 @@ exports.generateCard = asyncHandler(async (req, res) => {
   // Draw template background
   page.drawImage(templateImage, { x: 0, y: 0, width, height });
 
-  // Draw guest name
+  // Draw guest name with outline for clarity
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const config = event.cardTemplate;
   const nameColor = hexToRgb(config.guestNameColor || '#FFFFFF');
@@ -73,12 +73,30 @@ exports.generateCard = asyncHandler(async (req, res) => {
     nameX = width * namePctX;
   }
 
+  const nameY = height * (1 - namePctY);
+
+  // Shadow color — opposite of text color for contrast
+  const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
+    ? { r: 0, g: 0, b: 0 }
+    : { r: 1, g: 1, b: 1 };
+
+  // Draw outline first
+  const offsets = [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]];
+  for (const [ox, oy] of offsets) {
+    page.drawText(guest.guestName, {
+      x: nameX + ox, y: nameY + oy,
+      size: fontSize, font,
+      color: rgb(shadowColor.r, shadowColor.g, shadowColor.b),
+      opacity: 0.6,
+    });
+  }
+
+  // Draw main text
   page.drawText(guest.guestName, {
-    x: nameX,
-    y: height * (1 - namePctY),
-    size: fontSize,
-    font,
+    x: nameX, y: nameY,
+    size: fontSize, font,
     color: rgb(nameColor.r, nameColor.g, nameColor.b),
+    opacity: 1,
   });
 
   // Draw QR code
