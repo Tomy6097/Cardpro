@@ -11,15 +11,24 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const axios = require('axios');
 
 const TICKET_MAP = {
-  s: 'Single', single: 'Single',
-  d: 'Double', double: 'Double',
-  vip: 'VIP', vvip: 'VVIP',
-  family: 'Family', child: 'Child',
+  // Single
+  's': 'Single', 'single': 'Single', '1': 'Single',
+  // Double
+  'd': 'Double', 'double': 'Double', '2': 'Double',
+  // VIP
+  'v': 'VIP', 'vip': 'VIP',
+  // VVIP
+  'vv': 'VVIP', 'vvip': 'VVIP',
+  // Family
+  'f': 'Family', 'family': 'Family',
+  // Child
+  'c': 'Child', 'child': 'Child', 'kids': 'Child', 'kid': 'Child',
 };
 
 const normalizeTicketType = (val) => {
   if (!val) return 'Single';
-  return TICKET_MAP[val.toString().toLowerCase().trim()] || 'Single';
+  const key = val.toString().toLowerCase().trim();
+  return TICKET_MAP[key] || 'Single';
 };
 
 const hexToRgb = (hex) => {
