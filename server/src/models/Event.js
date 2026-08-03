@@ -26,16 +26,16 @@ const eventSchema = new mongoose.Schema({
     publicId: String,
   },
   cardTemplate: {
-    url: String,
-    publicId: String,
+    url: { type: String },
+    publicId: { type: String },
     qrPosition: {
-      x: { type: Number, default: 70 },
-      y: { type: Number, default: 70 },
+      type: { x: Number, y: Number },
+      default: () => ({ x: 70, y: 70 }),
     },
     qrSize: { type: Number, default: 150 },
     guestNamePosition: {
-      x: { type: Number, default: 50 },
-      y: { type: Number, default: 85 },
+      type: { x: Number, y: Number },
+      default: () => ({ x: 50, y: 85 }),
     },
     guestNameColor: { type: String, default: '#FFFFFF' },
     guestNameFontSize: { type: Number, default: 24 },

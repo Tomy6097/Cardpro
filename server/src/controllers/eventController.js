@@ -97,7 +97,6 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
   }
 
-  // Check Cloudinary config
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -109,7 +108,6 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     });
   }
 
-  // Delete old template
   if (event.cardTemplate?.publicId) {
     await deleteFromCloudinary(event.cardTemplate.publicId);
   }
@@ -119,21 +117,24 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     format: 'png',
   });
 
-  // Preserve existing config or set defaults
-  const existing = event.cardTemplate || {};
-  event.cardTemplate = {
-    url: result.secure_url,
-    publicId: result.public_id,
-    qrPosition: existing.qrPosition || { x: 70, y: 70 },
-    qrSize: existing.qrSize || 150,
-    guestNamePosition: existing.guestNamePosition || { x: 50, y: 85 },
-    guestNameColor: existing.guestNameColor || '#FFFFFF',
-    guestNameFontSize: existing.guestNameFontSize || 24,
-    guestNameAlign: existing.guestNameAlign || 'center',
-    showQR: existing.showQR !== undefined ? existing.showQR : true,
-  };
-
-  await event.save();
+  // Use $set with dot notation to avoid undefined nested object issue
+  const updatedEvent = await Event.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        'cardTemplate.url': result.secure_url,
+        'cardTemplate.publicId': result.public_id,
+        'cardTemplate.qrPosition': event.cardTemplate?.qrPosition || { x: 70, y: 70 },
+        'cardTemplate.qrSize': event.cardTemplate?.qrSize || 150,
+        'cardTemplate.guestNamePosition': event.cardTemplate?.guestNamePosition || { x: 50, y: 85 },
+        'cardTemplate.guestNameColor': event.cardTemplate?.guestNameColor || '#FFFFFF',
+        'cardTemplate.guestNameFontSize': event.cardTemplate?.guestNameFontSize || 24,
+        'cardTemplate.guestNameAlign': event.cardTemplate?.guestNameAlign || 'center',
+        'cardTemplate.showQR': event.cardTemplate?.showQR !== undefined ? event.cardTemplate.showQR : true,
+      },
+    },
+    { new: true, runValidators: false }
+  );
 
   await logActivity({
     event: event._id,
@@ -142,7 +143,7 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     req,
   });
 
-  res.json({ success: true, event });
+  res.json({ success: true, event: updatedEvent });
 });
 
 exports.uploadVideo = asyncHandler(async (req, res) => {
@@ -184,29 +185,27 @@ exports.updateCardConfig = asyncHandler(async (req, res) => {
     guestNameFontSize, guestNameAlign, showQR,
   } = req.body;
 
-  const current = event.cardTemplate || {};
+  const updatedEvent = await Event.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        'cardTemplate.qrPosition': (qrPosition && typeof qrPosition === 'object')
+          ? { x: Number(qrPosition.x) || 70, y: Number(qrPosition.y) || 70 }
+          : (event.cardTemplate?.qrPosition || { x: 70, y: 70 }),
+        'cardTemplate.qrSize': qrSize !== undefined ? Number(qrSize) : (event.cardTemplate?.qrSize || 150),
+        'cardTemplate.guestNamePosition': (guestNamePosition && typeof guestNamePosition === 'object')
+          ? { x: Number(guestNamePosition.x) || 50, y: Number(guestNamePosition.y) || 85 }
+          : (event.cardTemplate?.guestNamePosition || { x: 50, y: 85 }),
+        'cardTemplate.guestNameColor': guestNameColor || event.cardTemplate?.guestNameColor || '#FFFFFF',
+        'cardTemplate.guestNameFontSize': guestNameFontSize !== undefined ? Number(guestNameFontSize) : (event.cardTemplate?.guestNameFontSize || 24),
+        'cardTemplate.guestNameAlign': guestNameAlign || event.cardTemplate?.guestNameAlign || 'center',
+        'cardTemplate.showQR': showQR !== undefined ? Boolean(showQR) : (event.cardTemplate?.showQR !== undefined ? event.cardTemplate.showQR : true),
+      },
+    },
+    { new: true, runValidators: false }
+  );
 
-  // Build safe update with defaults
-  const updated = {
-    url: current.url,
-    publicId: current.publicId,
-    qrPosition: qrPosition && typeof qrPosition === 'object'
-      ? { x: Number(qrPosition.x) || 70, y: Number(qrPosition.y) || 70 }
-      : current.qrPosition || { x: 70, y: 70 },
-    qrSize: qrSize !== undefined ? Number(qrSize) : (current.qrSize || 150),
-    guestNamePosition: guestNamePosition && typeof guestNamePosition === 'object'
-      ? { x: Number(guestNamePosition.x) || 50, y: Number(guestNamePosition.y) || 85 }
-      : current.guestNamePosition || { x: 50, y: 85 },
-    guestNameColor: guestNameColor || current.guestNameColor || '#FFFFFF',
-    guestNameFontSize: guestNameFontSize !== undefined ? Number(guestNameFontSize) : (current.guestNameFontSize || 24),
-    guestNameAlign: guestNameAlign || current.guestNameAlign || 'center',
-    showQR: showQR !== undefined ? Boolean(showQR) : (current.showQR !== undefined ? current.showQR : true),
-  };
-
-  event.cardTemplate = updated;
-  await event.save();
-
-  res.json({ success: true, event });
+  res.json({ success: true, event: updatedEvent });
 });
 
 exports.getEventStats = asyncHandler(async (req, res) => {
