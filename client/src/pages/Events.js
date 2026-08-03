@@ -178,17 +178,36 @@ const Events = () => {
                   )}
                 </div>
 
+              {/* Quick links */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                  {[
+                    { label: 'Guests', path: 'guests', color: '#5C3D11' },
+                    { label: 'Cards', path: 'cards', color: '#B8860B' },
+                    { label: 'Invites', path: 'invitations', color: '#4F46E5' },
+                  ].map(q => (
+                    <button key={q.path} onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev._id}/${q.path}`); }} style={{
+                      flex: 1, padding: '6px 4px', borderRadius: 'var(--radius-sm)',
+                      background: q.color + '12', color: q.color,
+                      border: `1px solid ${q.color}25`, fontSize: '11px', fontWeight: 600,
+                      cursor: 'pointer', fontFamily: 'Inter',
+                    }}>
+                      {q.label}
+                    </button>
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => navigate(`/events/${ev._id}/guests`)} style={{
-                    flex: 1, padding: '8px', borderRadius: 'var(--radius-sm)',
+                  <button onClick={() => navigate(`/events/${ev._id}`)} style={{
+                    flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)',
                     background: 'var(--primary)', color: 'var(--white)',
-                    border: 'none', fontSize: '12px', fontWeight: 500,
-                    cursor: 'pointer', fontFamily: 'Inter',
+                    border: 'none', fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'Poppins',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   }}>
-                    Manage
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    Open
                   </button>
                   <button onClick={() => handleEdit(ev)} style={{
-                    padding: '8px 14px', borderRadius: 'var(--radius-sm)',
+                    padding: '9px 14px', borderRadius: 'var(--radius-sm)',
                     background: 'var(--cream-dark)', color: 'var(--primary)',
                     border: '1px solid var(--border)', fontSize: '12px',
                     cursor: 'pointer', fontFamily: 'Inter',
@@ -196,12 +215,12 @@ const Events = () => {
                     Edit
                   </button>
                   <button onClick={() => handleDelete(ev._id)} style={{
-                    padding: '8px 14px', borderRadius: 'var(--radius-sm)',
+                    padding: '9px 12px', borderRadius: 'var(--radius-sm)',
                     background: 'var(--danger-light)', color: 'var(--danger)',
                     border: 'none', fontSize: '12px',
                     cursor: 'pointer', fontFamily: 'Inter',
                   }}>
-                    Del
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
                   </button>
                 </div>
               </div>
