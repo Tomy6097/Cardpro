@@ -7,21 +7,124 @@ const { generateQRToken, generateQRCodeBuffer } = require('../utils/qrGenerator'
 const { uploadToCloudinary } = require('../utils/cloudinary');
 const { normalizePhone } = require('../utils/phoneUtils');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const axios = require('axios');
 
 const TICKET_MAP = {
   s: 'Single', single: 'Single',
   d: 'Double', double: 'Double',
-  vip: 'VIP',
-  vvip: 'VVIP',
-  family: 'Family',
-  child: 'Child',
+  vip: 'VIP', vvip: 'VVIP',
+  family: 'Family', child: 'Child',
 };
 
 const normalizeTicketType = (val) => {
   if (!val) return 'Single';
-  const key = val.toString().toLowerCase().trim();
-  return TICKET_MAP[key] || 'Single';
+  return TICKET_MAP[val.toString().toLowerCase().trim()] || 'Single';
 };
+
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#FFFFFF');
+  return result
+    ? { r: parseInt(result[1], 16) / 255, g: parseInt(result[2], 16) / 255, b: parseInt(result[3], 16) / 255 }
+    : { r: 1, g: 1, b: 1 };
+};
+
+const fetchBuffer = async (url) => {
+  const response = await axios.get(url, { responseType: 'arraybuffer' });
+  return Buffer.from(response.data);
+};
+
+/**
+ * Auto-generate QR code + card for a guest in the background
+ * Non-blocking — errors are caught silently so guest creation doesn't fail
+ */
+const autoGenerateQRAndCard = async (guest, event) => {
+  try {
+    // 1. Generate QR Token
+    const token = generateQRToken(guest._id.toString(), event._id.toString(), guest.ticketType);
+    guest.qrToken = token;
+
+    // 2. Generate QR code image and upload to Cloudinary
+    const qrBuffer = await generateQRCodeBuffer(token, { size: 300 });
+    const qrResult = await uploadToCloudinary(qrBuffer, {
+      folder: `cardpro/events/${event._id}/qrcodes`,
+      public_id: `qr_${guest._id}`,
+      format: 'png',
+    });
+    guest.qrCodeUrl = qrResult.secure_url;
+
+    // 3. Generate card PDF if template exists
+    if (event.cardTemplate?.url) {
+      const pdfDoc = await PDFDocument.create();
+      const templateBytes = await fetchBuffer(event.cardTemplate.url);
+
+      let templateImage;
+      try { templateImage = await pdfDoc.embedPng(templateBytes); }
+      catch { templateImage = await pdfDoc.embedJpg(templateBytes); }
+
+      const { width, height } = templateImage.scale(1);
+      const page = pdfDoc.addPage([width, height]);
+      page.drawImage(templateImage, { x: 0, y: 0, width, height });
+
+      const cfg = event.cardTemplate;
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const nameColor = hexToRgb(cfg.guestNameColor || '#FFFFFF');
+      const fontSize = cfg.guestNameFontSize || 24;
+      const nameWidth = font.widthOfTextAtSize(guest.guestName, fontSize);
+      const namePctX = (cfg.guestNamePosition?.x || 50) / 100;
+      const namePctY = (cfg.guestNamePosition?.y || 85) / 100;
+      const nameX = (cfg.guestNameAlign === 'center')
+        ? (width * namePctX) - (nameWidth / 2)
+        : (cfg.guestNameAlign === 'right')
+          ? (width * namePctX) - nameWidth
+          : width * namePctX;
+
+      page.drawText(guest.guestName, {
+        x: nameX, y: height * (1 - namePctY),
+        size: fontSize, font,
+        color: rgb(nameColor.r, nameColor.g, nameColor.b),
+      });
+
+      const qrSize = cfg.qrSize || 150;
+      if (cfg.showQR !== false) {
+        const qrImg = await pdfDoc.embedPng(qrBuffer);
+        const qrPctX = (cfg.qrPosition?.x || 70) / 100;
+        const qrPctY = (cfg.qrPosition?.y || 70) / 100;
+        page.drawImage(qrImg, {
+          x: width * qrPctX - qrSize / 2,
+          y: height * (1 - qrPctY) - qrSize / 2,
+          width: qrSize, height: qrSize,
+        });
+
+        const labelFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const label = guest.ticketType.toUpperCase();
+        const labelWidth = labelFont.widthOfTextAtSize(label, 12);
+        page.drawText(label, {
+          x: width * qrPctX - labelWidth / 2,
+          y: height * (1 - qrPctY) + qrSize / 2 + 5,
+          size: 12, font: labelFont,
+          color: rgb(nameColor.r, nameColor.g, nameColor.b),
+        });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const cardResult = await uploadToCloudinary(Buffer.from(pdfBytes), {
+        folder: `cardpro/events/${event._id}/cards`,
+        public_id: `card_${guest._id}`,
+        format: 'pdf',
+        resource_type: 'image',
+      });
+      guest.cardUrl = cardResult.secure_url;
+      guest.cardPublicId = cardResult.public_id;
+    }
+
+    await guest.save({ validateBeforeSave: false });
+  } catch (err) {
+    // Non-critical — log but don't fail guest creation
+    console.error(`Auto QR/Card generation failed for guest ${guest._id}:`, err.message);
+  }
+};
+
 
 exports.addGuest = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
@@ -51,12 +154,22 @@ exports.addGuest = asyncHandler(async (req, res) => {
     notes,
   });
 
+  // Auto-generate QR code and card in background (non-blocking)
+  autoGenerateQRAndCard(guest, event);
+
   await logActivity({
     event: eventId,
     action: 'add_guest',
-    description: `Guest "${guest.guestName}" added to event`,
+    description: `Guest "${guest.guestName}" added — QR & card generating...`,
     req,
   });
+
+  res.status(201).json({
+    success: true,
+    guest,
+    message: 'Guest added. QR code and card are being generated automatically.',
+  });
+});
 
   res.status(201).json({ success: true, guest });
 });
@@ -137,10 +250,19 @@ exports.importGuests = asyncHandler(async (req, res) => {
     inserted = await Guest.insertMany(toInsert, { ordered: false });
   }
 
+  // Auto-generate QR codes and cards for all imported guests in background
+  if (inserted.length > 0) {
+    setImmediate(async () => {
+      for (const guest of inserted) {
+        await autoGenerateQRAndCard(guest, event);
+      }
+    });
+  }
+
   await logActivity({
     event: eventId,
     action: 'import_guests',
-    description: `${inserted.length} guests imported via CSV`,
+    description: `${inserted.length} guests imported via CSV — QR codes generating automatically`,
     metadata: { inserted: inserted.length, errors: errors.length },
     req,
   });
@@ -150,7 +272,7 @@ exports.importGuests = asyncHandler(async (req, res) => {
     imported: inserted.length,
     skipped: errors.length,
     errors,
-    message: `${inserted.length} guests imported successfully. ${errors.length} records skipped.`,
+    message: `${inserted.length} guests imported. QR codes and cards are being generated automatically.`,
   });
 });
 

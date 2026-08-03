@@ -40,6 +40,12 @@ const GuestList = () => {
       search, rsvpStatus: rsvpFilter, isDeleted: showDeleted, page, limit: 50,
     }).then(r => r.data),
     keepPreviousData: true,
+    // Auto-refresh every 5s if any guest is still generating QR/card
+    refetchInterval: (data) => {
+      const guests = data?.guests || [];
+      const stillGenerating = guests.some(g => !g.qrCodeUrl || !g.qrToken);
+      return stillGenerating ? 5000 : false;
+    },
   });
 
   const addMutation = useMutation({
@@ -103,7 +109,6 @@ const GuestList = () => {
   const guests = data?.guests || [];
   const pagination = data?.pagination || {};
   const event = eventData?.event;
-
   const toggleSelect = (id) => {
     const s = new Set(selected);
     s.has(id) ? s.delete(id) : s.add(id);
@@ -217,17 +222,41 @@ const GuestList = () => {
                     </code>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {g.qrCodeUrl && (
-                        <a href={g.qrCodeUrl} target="_blank" rel="noreferrer" style={{ padding: '4px 10px', background: 'var(--cream-dark)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--primary)', textDecoration: 'none' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {g.qrCodeUrl ? (
+                        <a href={g.qrCodeUrl} target="_blank" rel="noreferrer" style={{
+                          padding: '4px 10px', background: 'var(--cream-dark)',
+                          border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                          fontSize: '11px', color: 'var(--primary)', textDecoration: 'none',
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                          </svg>
                           QR
                         </a>
+                      ) : (
+                        <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> QR...
+                        </span>
                       )}
-                      {g.cardUrl && (
-                        <a href={g.cardUrl} target="_blank" rel="noreferrer" style={{ padding: '4px 10px', background: 'var(--cream-dark)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--primary)', textDecoration: 'none' }}>
+                      {g.cardUrl ? (
+                        <a href={g.cardUrl} target="_blank" rel="noreferrer" style={{
+                          padding: '4px 10px', background: 'var(--cream-dark)',
+                          border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                          fontSize: '11px', color: 'var(--primary)', textDecoration: 'none',
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                          </svg>
                           Card
                         </a>
-                      )}
+                      ) : event?.cardTemplate?.url ? (
+                        <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> Card...
+                        </span>
+                      ) : null}
                       {showDeleted ? (
                         <button onClick={() => restoreMutation.mutate(g._id)} style={{ padding: '4px 10px', background: 'var(--success-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--success)', cursor: 'pointer' }}>
                           Restore
@@ -238,6 +267,7 @@ const GuestList = () => {
                         </button>
                       )}
                     </div>
+                    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
                   </td>
                 </tr>
               ))}
