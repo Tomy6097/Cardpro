@@ -92,7 +92,8 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     description: 'Professional Event Management Platform',
     status: 'running',
-    environment: process.env.NODE_ENV,
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
@@ -112,7 +113,13 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ success: true, status: 'ok', environment: process.env.NODE_ENV, timestamp: new Date().toISOString() });
+  res.json({
+    success: true,
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // 404
