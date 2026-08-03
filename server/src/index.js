@@ -102,6 +102,7 @@ app.get('/', (req, res) => {
     status: 'running',
     environment: process.env.NODE_ENV || 'development',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? `configured (${process.env.CLOUDINARY_CLOUD_NAME})` : 'NOT configured',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
