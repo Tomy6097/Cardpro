@@ -41,6 +41,7 @@ export const guestsAPI = {
   generateQR: (id) => api.post(`/guests/${id}/generate-qr`),
   generateAllQR: (eventId) => api.post(`/guests/event/${eventId}/generate-all-qr`),
   downloadCSV: (eventId) => api.get(`/guests/event/${eventId}/download-csv`, { responseType: 'blob' }),
+  resetScan: (id) => api.post(`/guests/${id}/reset-scan`),
 };
 
 // Cards

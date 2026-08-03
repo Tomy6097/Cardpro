@@ -4,7 +4,7 @@ const { csvUpload } = require('../middleware/upload');
 const {
   addGuest, importGuests, getGuests, getGuest, updateGuest,
   deleteGuest, restoreGuest, deleteAllGuests, restoreAllGuests,
-  generateQRForGuest, generateAllQRCodes, downloadGuestCSV,
+  generateQRForGuest, generateAllQRCodes, downloadGuestCSV, resetGuestScan,
 } = require('../controllers/guestController');
 
 router.use(protect);
@@ -22,5 +22,6 @@ router.put('/:id', adminOnly, updateGuest);
 router.delete('/:id', adminOnly, deleteGuest);
 router.post('/:id/restore', adminOnly, restoreGuest);
 router.post('/:id/generate-qr', adminOnly, generateQRForGuest);
+router.post('/:id/reset-scan', adminOnly, resetGuestScan);
 
 module.exports = router;

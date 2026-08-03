@@ -203,39 +203,69 @@ exports.importGuests = asyncHandler(async (req, res) => {
   const errors = [];
   let rowIndex = 1;
 
-  const stream = Readable.from(req.file.buffer.toString());
+  // Try to parse - handle BOM and different encodings
+  let csvContent = req.file.buffer.toString('utf8');
+  // Remove BOM if present
+  if (csvContent.charCodeAt(0) === 0xFEFF) csvContent = csvContent.slice(1);
+
+  const stream = Readable.from(csvContent);
 
   await new Promise((resolve, reject) => {
     stream
-      .pipe(csv({ mapHeaders: ({ header }) => header.toLowerCase().trim() }))
+      .pipe(csv({
+        mapHeaders: ({ header }) => header.toLowerCase().trim()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, ''),
+        skipEmptyLines: true,
+      }))
       .on('data', (row) => {
         rowIndex++;
-        const guestName = row['guest name'] || row['guestname'] || row['name'] || '';
-        const phone = row['phone'] || row['phone number'] || row['mobile'] || '';
-        const ticketType = normalizeTicketType(row['ticket'] || row['ticket type'] || row['tickettype'] || '');
-        const email = row['email'] || '';
-        const tableNumber = row['table'] || row['table number'] || '';
-        const notes = row['notes'] || row['note'] || '';
 
-        if (!guestName.trim()) {
+        // Accept many possible column name variations
+        const guestName = (
+          row['guest_name'] || row['guestname'] || row['name'] ||
+          row['full_name'] || row['fullname'] || row['jina'] ||
+          row['guest'] || Object.values(row)[0] || ''
+        ).toString().trim();
+
+        const phone = (
+          row['phone'] || row['phone_number'] || row['phonenumber'] ||
+          row['mobile'] || row['simu'] || row['tel'] ||
+          row['telephone'] || row['contact'] || Object.values(row)[1] || ''
+        ).toString().trim();
+
+        const ticketType = normalizeTicketType(
+          row['ticket'] || row['ticket_type'] || row['tickettype'] ||
+          row['type'] || row['aina'] || ''
+        );
+        const email = (row['email'] || row['barua_pepe'] || '').toString().trim();
+        const tableNumber = (row['table'] || row['table_number'] || row['meza'] || '').toString().trim();
+        const notes = (row['notes'] || row['note'] || row['maelezo'] || '').toString().trim();
+
+        if (!guestName) {
           errors.push({ row: rowIndex, reason: 'Missing guest name' });
           return;
         }
 
         const normalizedPhone = normalizePhone(phone);
         if (!normalizedPhone) {
-          errors.push({ row: rowIndex, guestName, reason: `Invalid phone number: ${phone}` });
+          errors.push({ row: rowIndex, guestName, reason: `Invalid phone: "${phone}"` });
           return;
         }
 
-        results.push({ guestName: guestName.trim(), phone: normalizedPhone, email, ticketType, tableNumber, notes });
+        results.push({ guestName, phone: normalizedPhone, email, ticketType, tableNumber, notes });
       })
       .on('end', resolve)
       .on('error', reject);
   });
 
   if (results.length === 0) {
-    return res.status(400).json({ success: false, message: 'No valid guests found in CSV.', errors });
+    return res.status(400).json({
+      success: false,
+      message: 'No valid guests found in CSV.',
+      hint: 'CSV inahitaji columns: Name (au Guest Name) na Phone (au Mobile). Angalia CSV yako ina headers sahihi.',
+      errors,
+    });
   }
 
   // Check for duplicates within CSV itself
@@ -477,6 +507,28 @@ exports.generateAllQRCodes = asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, generated, message: `QR codes generated for ${generated} guests.` });
+});
+
+exports.resetGuestScan = asyncHandler(async (req, res) => {
+  const guest = await Guest.findById(req.params.id);
+  if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
+
+  guest.scanStatus = 'not_scanned';
+  guest.scanCount = 0;
+  guest.scanHistory = [];
+  guest.remainingEntries = guest.ticketType === 'Double' ? 2
+    : guest.ticketType === 'Family' ? 4 : 1;
+
+  await guest.save({ validateBeforeSave: false });
+
+  await logActivity({
+    event: guest.event,
+    action: 'restore_guest',
+    description: `Scan reset for guest "${guest.guestName}"`,
+    req,
+  });
+
+  res.json({ success: true, guest, message: 'Scan reset successfully. Guest can enter again.' });
 });
 
 exports.downloadGuestCSV = asyncHandler(async (req, res) => {

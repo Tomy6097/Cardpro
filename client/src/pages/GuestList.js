@@ -16,6 +16,81 @@ const ticketOptions = [
 
 const emptyForm = { guestName: '', phone: '', email: '', ticketType: 'Single', tableNumber: '', notes: '' };
 
+// Card Preview Popup Component
+const CardPreviewModal = ({ guest, onClose }) => {
+  if (!guest) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 2000,
+      background: 'rgba(26,10,0,0.75)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--white)', borderRadius: 'var(--radius-xl)',
+        boxShadow: 'var(--shadow-xl)', overflow: 'hidden',
+        maxWidth: '480px', width: '100%',
+        animation: 'modalIn 0.2s ease',
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '16px', fontWeight: 700, color: 'white', margin: 0 }}>{guest.guestName}</h3>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', margin: '2px 0 0' }}>{guest.ticketType} Ticket • {guest.phone}</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        {/* Card preview */}
+        <div style={{ padding: '24px' }}>
+          {guest.cardUrl ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: '16px', background: '#f5f5f5' }}>
+                <iframe
+                  src={guest.cardUrl}
+                  title="Card Preview"
+                  style={{ width: '100%', height: '320px', border: 'none' }}
+                />
+              </div>
+              <a href={guest.cardUrl} download={`card-${guest.guestName}.pdf`} target="_blank" rel="noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '10px 24px', background: 'var(--primary)', color: 'white',
+                borderRadius: 'var(--radius)', fontSize: '14px', fontWeight: 600,
+                textDecoration: 'none', fontFamily: 'Inter',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Download Card
+              </a>
+            </div>
+          ) : guest.qrCodeUrl ? (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '16px' }}>Card PDF not generated yet. QR Code:</p>
+              <div style={{ display: 'inline-block', background: 'white', padding: '16px', borderRadius: '12px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
+                <img src={guest.qrCodeUrl} alt="QR Code" style={{ width: '180px', height: '180px', display: 'block' }} />
+                <p style={{ margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--primary-dark)', letterSpacing: '2px', textAlign: 'center' }}>{guest.ticketType?.toUpperCase()}</p>
+              </div>
+              <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Code: <code style={{ color: 'var(--primary)', fontWeight: 600 }}>{guest.verificationCode}</code>
+              </p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '12px', opacity: 0.4 }}>
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <p>QR code is being generated...</p>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>Refresh after a few seconds.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes modalIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }`}</style>
+    </div>
+  );
+};
+
 const GuestList = () => {
   const { id: eventId } = useParams();
   const qc = useQueryClient();
@@ -28,6 +103,7 @@ const GuestList = () => {
   const [addModal, setAddModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selected, setSelected] = useState(new Set());
+  const [previewGuest, setPreviewGuest] = useState(null);
 
   const { data: eventData } = useQuery({
     queryKey: ['event', eventId],
@@ -84,6 +160,12 @@ const GuestList = () => {
   const deleteAllMutation = useMutation({
     mutationFn: () => guestsAPI.deleteAll(eventId),
     onSuccess: () => { qc.invalidateQueries(['guests', eventId]); toast.success('All guests deleted.'); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const resetScanMutation = useMutation({
+    mutationFn: guestsAPI.resetScan,
+    onSuccess: () => { qc.invalidateQueries(['guests', eventId]); toast.success('Scan reset. Guest can enter again.'); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -222,48 +304,44 @@ const GuestList = () => {
                     </code>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      {g.qrCodeUrl ? (
-                        <a href={g.qrCodeUrl} target="_blank" rel="noreferrer" style={{
-                          padding: '4px 10px', background: 'var(--cream-dark)',
-                          border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-                          fontSize: '11px', color: 'var(--primary)', textDecoration: 'none',
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                        }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                          </svg>
-                          QR
-                        </a>
-                      ) : (
-                        <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> QR...
+                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* View Card Button — opens popup */}
+                      <button
+                        onClick={() => setPreviewGuest(g)}
+                        style={{ padding: '4px 10px', background: 'var(--primary)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="View Card"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Card
+                      </button>
+
+                      {/* QR generating indicator */}
+                      {!g.qrCodeUrl && (
+                        <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E' }}>
+                          ⟳ QR...
                         </span>
                       )}
-                      {g.cardUrl ? (
-                        <a href={g.cardUrl} target="_blank" rel="noreferrer" style={{
-                          padding: '4px 10px', background: 'var(--cream-dark)',
-                          border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-                          fontSize: '11px', color: 'var(--primary)', textDecoration: 'none',
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                        }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-                          </svg>
-                          Card
-                        </a>
-                      ) : event?.cardTemplate?.url ? (
-                        <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> Card...
-                        </span>
+
+                      {/* Reset Scan — only if scanned */}
+                      {g.scanStatus === 'scanned' || g.scanStatus === 'duplicate_scan' ? (
+                        <button
+                          onClick={() => { if (window.confirm(`Reset scan for ${g.guestName}? They will be able to enter again.`)) resetScanMutation.mutate(g._id); }}
+                          style={{ padding: '4px 10px', background: '#DBEAFE', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: '#1E40AF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                          title="Reset Scan"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                          Reset
+                        </button>
                       ) : null}
+
+                      {/* Restore / Delete */}
                       {showDeleted ? (
                         <button onClick={() => restoreMutation.mutate(g._id)} style={{ padding: '4px 10px', background: 'var(--success-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--success)', cursor: 'pointer' }}>
                           Restore
                         </button>
                       ) : (
-                        <button onClick={() => deleteMutation.mutate(g._id)} style={{ padding: '4px 10px', background: 'var(--danger-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--danger)', cursor: 'pointer' }}>
-                          Delete
+                        <button onClick={() => deleteMutation.mutate(g._id)} style={{ padding: '4px 8px', background: 'var(--danger-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--danger)', cursor: 'pointer' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                         </button>
                       )}
                     </div>
@@ -315,6 +393,9 @@ const GuestList = () => {
         </div>
       </Modal>
     </div>
+
+      {/* Card Preview Popup */}
+      <CardPreviewModal guest={previewGuest} onClose={() => setPreviewGuest(null)} />
   );
 };
 
