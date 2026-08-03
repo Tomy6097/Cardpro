@@ -154,7 +154,10 @@ const GuestList = () => {
       qc.invalidateQueries(['guests', eventId]);
       toast.success(`${r.data.imported} guests imported. ${r.data.skipped} skipped.`);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      const msg = err.response?.data?.hint || err.response?.data?.message || err.message;
+      toast.error(msg, { duration: 6000 });
+    },
   });
 
   const deleteAllMutation = useMutation({
@@ -220,6 +223,16 @@ const GuestList = () => {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <Button variant="secondary" size="sm" onClick={handleDownloadCSV}>Export CSV</Button>
+          <a href="/guests-template.csv" download="guests-template.csv" style={{
+            padding: '6px 14px', borderRadius: 'var(--radius)',
+            background: 'var(--cream-dark)', color: 'var(--primary)',
+            border: '1px solid var(--border)', fontSize: '13px',
+            fontWeight: 500, textDecoration: 'none', fontFamily: 'Inter',
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            CSV Template
+          </a>
           <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} loading={importMutation.isPending}>
             Import CSV
           </Button>

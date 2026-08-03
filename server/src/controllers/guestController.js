@@ -208,11 +208,16 @@ exports.importGuests = asyncHandler(async (req, res) => {
   // Remove BOM if present
   if (csvContent.charCodeAt(0) === 0xFEFF) csvContent = csvContent.slice(1);
 
+  // Auto-detect separator (comma or semicolon)
+  const firstLine = csvContent.split('\n')[0] || '';
+  const separator = firstLine.includes(';') ? ';' : ',';
+
   const stream = Readable.from(csvContent);
 
   await new Promise((resolve, reject) => {
     stream
       .pipe(csv({
+        separator,
         mapHeaders: ({ header }) => header.toLowerCase().trim()
           .replace(/\s+/g, '_')
           .replace(/[^a-z0-9_]/g, ''),
@@ -260,11 +265,20 @@ exports.importGuests = asyncHandler(async (req, res) => {
   });
 
   if (results.length === 0) {
+    // Show what headers were detected to help debug
+    let detectedHeaders = [];
+    try {
+      const firstLine = csvContent.split('\n')[0];
+      const sep = firstLine.includes(';') ? ';' : ',';
+      detectedHeaders = firstLine.split(sep).map(h => h.trim());
+    } catch {}
+
     return res.status(400).json({
       success: false,
       message: 'No valid guests found in CSV.',
-      hint: 'CSV inahitaji columns: Name (au Guest Name) na Phone (au Mobile). Angalia CSV yako ina headers sahihi.',
+      hint: `CSV yako inahitaji columns za Name/Jina na Phone/Simu. Headers zilizopatikana: [${detectedHeaders.join(', ')}]`,
       errors,
+      templateUrl: '/guests-template.csv',
     });
   }
 
