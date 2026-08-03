@@ -171,9 +171,6 @@ exports.addGuest = asyncHandler(async (req, res) => {
   });
 });
 
-  res.status(201).json({ success: true, guest });
-});
-
 exports.importGuests = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
   const event = await Event.findById(eventId);
