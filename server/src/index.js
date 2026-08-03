@@ -127,6 +127,11 @@ app.get('/health', (req, res) => {
     status: 'ok',
     environment: process.env.NODE_ENV || 'development',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    cloudinary: {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'NOT SET',
+      api_key: process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.substring(0, 6) + '...' : 'NOT SET',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? process.env.CLOUDINARY_API_SECRET.substring(0, 6) + '...' : 'NOT SET',
+    },
     timestamp: new Date().toISOString(),
   });
 });
