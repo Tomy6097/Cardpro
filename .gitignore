@@ -3,10 +3,11 @@ node_modules/
 client/node_modules/
 server/node_modules/
 
-# Environment files
+# Environment files - NEVER commit these
 .env
 server/.env
-# client/.env is NOT ignored - contains public API URL only
+client/.env.local
+
 
 # Build output
 client/build/
