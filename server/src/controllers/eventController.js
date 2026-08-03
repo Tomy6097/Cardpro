@@ -97,6 +97,18 @@ exports.uploadTemplate = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
   }
 
+  // Check Cloudinary config
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    return res.status(503).json({
+      success: false,
+      message: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your Render environment variables.',
+    });
+  }
+
   // Delete old template
   if (event.cardTemplate?.publicId) {
     await deleteFromCloudinary(event.cardTemplate.publicId);

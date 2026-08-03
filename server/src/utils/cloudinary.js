@@ -10,6 +10,11 @@ const getCloudinaryConfig = (settings) => {
 
 const uploadToCloudinary = async (buffer, options = {}, settings = null) => {
   const config = getCloudinaryConfig(settings);
+
+  if (!config.cloud_name || !config.api_key || !config.api_secret) {
+    throw new Error('Cloudinary is not configured. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to your environment variables.');
+  }
+
   cloudinary.config(config);
 
   return new Promise((resolve, reject) => {
