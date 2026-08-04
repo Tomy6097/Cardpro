@@ -48,7 +48,20 @@ services:
     envVars:
       - key: REACT_APP_API_URL
         sync: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
     routes:
+      - type: rewrite
+        source: /event/*
+        destination: /index.html
+      - type: rewrite
+        source: /login
+        destination: /index.html
+      - type: rewrite
+        source: /dashboard
+        destination: /index.html
       - type: rewrite
         source: /*
         destination: /index.html
