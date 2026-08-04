@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) => {
+const Modal = ({ isOpen, onClose, title, children, width = '520px', footer, offsetTop = 24 }) => {
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = '';
@@ -26,7 +26,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         position: 'fixed',
         top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
-        marginTop: '24px',
+        marginTop: `${offsetTop}px`,
         zIndex: 1000,
         width: `min(${width}, calc(100vw - 32px))`,
         maxHeight: 'calc(100vh - 32px)',

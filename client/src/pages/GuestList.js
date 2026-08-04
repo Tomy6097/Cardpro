@@ -31,7 +31,7 @@ const CardPreviewModal = ({ guest, onClose }) => {
           position: 'fixed',
           top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          marginTop: '24px',
+          marginTop: '48px',
           zIndex: 2000,
           width: 'min(460px, calc(100vw - 32px))',
           maxHeight: 'calc(100vh - 32px)',
@@ -449,7 +449,7 @@ const GuestList = () => {
       </div>
 
       {/* Add Guest Modal */}
-      <Modal isOpen={addModal} onClose={() => setAddModal(false)} title="Add Guest" width="480px"
+      <Modal isOpen={addModal} onClose={() => setAddModal(false)} title="Add Guest" width="480px" offsetTop={48}
         footer={
           <>
             <Button variant="secondary" onClick={() => setAddModal(false)}>Cancel</Button>
