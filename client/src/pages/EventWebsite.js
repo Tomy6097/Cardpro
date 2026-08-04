@@ -77,7 +77,7 @@ const EventWebsite = () => {
         <div style={{position:'relative',width:'100%'}}>
           {photos.length === 1 ? (
             <div style={{position:'relative',maxHeight:'100vh',minHeight:'60vh',overflow:'hidden'}}>
-              <img src={photos[0].url} alt={photos[0].caption||'Event'} style={{width:'100%',height:'100vh',objectFit:'cover',display:'block'}}/>
+              <img src={photos[0].url} alt={photos[0].caption||'Event'} style={{width:'100%',height:'100vh',objectFit:'cover',objectPosition:'center center',display:'block'}}/>
               <div style={{position:'absolute',inset:0,background:`linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 30%, transparent 60%, ${bg} 100%)`}}/>
               {photos[0].caption&&(
                 <div style={{position:'absolute',bottom:'80px',left:0,right:0,textAlign:'center'}}>

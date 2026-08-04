@@ -302,7 +302,7 @@ exports.uploadEventPhoto = asyncHandler(async (req, res) => {
   const result = await uploadToCloudinary(req.file.buffer, {
     folder: `cardpro/events/${event._id}/photos`,
     format: 'jpg',
-    transformation: [{ quality: 'auto:good', width: 1200 }],
+    transformation: [{ quality: 'auto:good', width: 1200, crop: 'limit' }],
   });
 
   event.eventPhotos.push({
