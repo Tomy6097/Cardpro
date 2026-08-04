@@ -44,6 +44,7 @@ app.use(cors({
     process.env.CLIENT_URL,
     'http://localhost:3000',
     'https://cardpro-client.onrender.com',
+    'https://cardpro-app.onrender.com',
     /\.onrender\.com$/,
   ].filter(Boolean),
   credentials: true,
