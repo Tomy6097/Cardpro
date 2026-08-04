@@ -31,6 +31,7 @@ const CardPreviewModal = ({ guest, onClose }) => {
           position: 'fixed',
           top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
+          marginTop: '24px',
           zIndex: 2000,
           width: 'min(460px, calc(100vw - 32px))',
           maxHeight: 'calc(100vh - 32px)',

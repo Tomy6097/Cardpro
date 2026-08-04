@@ -26,6 +26,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         position: 'fixed',
         top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
+        marginTop: '24px',
         zIndex: 1000,
         width: `min(${width}, calc(100vw - 32px))`,
         maxHeight: 'calc(100vh - 32px)',
