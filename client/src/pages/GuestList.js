@@ -120,21 +120,35 @@ const CardPreviewModal = ({ guest, onClose }) => {
             display: 'flex', gap: '10px', justifyContent: 'center',
             flexShrink: 0, background: 'var(--white)',
           }}>
-            <a
-              href={guest.cardUrl}
-              download={`${guest.guestName.replace(/\s+/g, '_')}_card.jpg`}
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch(guest.cardUrl);
+                  const blob = await response.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${guest.guestName.replace(/\s+/g, '_')}_card.jpg`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch {
+                  window.open(guest.cardUrl, '_blank');
+                }
+              }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 padding: '9px 22px', background: 'var(--primary)', color: 'white',
                 borderRadius: 'var(--radius)', fontSize: '13px', fontWeight: 600,
-                textDecoration: 'none', fontFamily: 'Inter',
+                border: 'none', cursor: 'pointer', fontFamily: 'Inter',
               }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
               Download JPG
-            </a>
+            </button>
             <button onClick={onClose} style={{
               padding: '9px 18px', background: 'var(--cream-dark)',
               border: '1px solid var(--border)', borderRadius: 'var(--radius)',
