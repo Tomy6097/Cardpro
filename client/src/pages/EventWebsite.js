@@ -86,7 +86,7 @@ const EventWebsite = () => {
 
   return (
     <div style={{minHeight:'100vh',background:`linear-gradient(160deg,${bg},${bg}cc,${bg})`,fontFamily:ff}}>
-      <div style={{maxWidth:'540px',margin:'0 auto',padding:'32px 16px 60px'}}>
+      <div style={{maxWidth:'680px',margin:'0 auto',padding:'32px 20px 60px'}}>
 
         {/* Branding */}
         <p style={{textAlign:'center',fontSize:'11px',letterSpacing:'3px',color:pc+'80',textTransform:'uppercase',marginBottom:'24px'}}>Cardpro Invitation</p>
@@ -98,19 +98,52 @@ const EventWebsite = () => {
           </div>
         )}
 
-        {/* Event Photos Gallery (above main card) */}
+        {/* Event Photos Gallery */}
         {eventPhotos.length > 0 && (
           <div style={{marginBottom:'20px'}}>
-            <div style={{display:'grid',gridTemplateColumns:eventPhotos.length===1?'1fr':eventPhotos.length===2?'1fr 1fr':'1fr 1fr',gap:'8px',borderRadius:'16px',overflow:'hidden'}}>
-              {eventPhotos.slice(0,4).map((p,i)=>(
-                <div key={p._id||i} style={{position:'relative',aspectRatio:eventPhotos.length===1?'16/9':'4/3',overflow:'hidden',borderRadius:'8px'}}>
-                  <img src={p.url} alt={p.caption||'Event'} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  {p.caption&&<div style={{position:'absolute',bottom:0,left:0,right:0,padding:'6px 8px',background:'linear-gradient(transparent,rgba(0,0,0,0.7))'}}>
-                    <p style={{color:'white',fontSize:'11px',margin:0,textAlign:'center'}}>{p.caption}</p>
+            {eventPhotos.length === 1 ? (
+              // Single photo — full width, tall
+              <div style={{borderRadius:'20px',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',position:'relative'}}>
+                <img src={eventPhotos[0].url} alt={eventPhotos[0].caption||'Event'} style={{width:'100%',display:'block',maxHeight:'500px',objectFit:'cover'}}/>
+                {eventPhotos[0].caption&&(
+                  <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'20px',background:'linear-gradient(transparent,rgba(0,0,0,0.7))'}}>
+                    <p style={{color:'white',fontSize:'14px',margin:0,textAlign:'center',fontFamily:ff}}>{eventPhotos[0].caption}</p>
+                  </div>
+                )}
+              </div>
+            ) : eventPhotos.length === 2 ? (
+              // Two photos — side by side
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',borderRadius:'20px',overflow:'hidden'}}>
+                {eventPhotos.slice(0,2).map((p,i)=>(
+                  <div key={p._id||i} style={{position:'relative',aspectRatio:'3/4',overflow:'hidden'}}>
+                    <img src={p.url} alt={p.caption||'Event'} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                    {p.caption&&<div style={{position:'absolute',bottom:0,left:0,right:0,padding:'8px',background:'linear-gradient(transparent,rgba(0,0,0,0.7))'}}>
+                      <p style={{color:'white',fontSize:'11px',margin:0,textAlign:'center'}}>{p.caption}</p>
+                    </div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // 3+ photos — one big + grid
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',borderRadius:'20px',overflow:'hidden'}}>
+                {/* First photo — spans full left column */}
+                <div style={{position:'relative',overflow:'hidden',borderRadius:'0',gridRow:'1/3'}}>
+                  <img src={eventPhotos[0].url} alt={eventPhotos[0].caption||'Event'} style={{width:'100%',height:'100%',objectFit:'cover',minHeight:'240px'}}/>
+                  {eventPhotos[0].caption&&<div style={{position:'absolute',bottom:0,left:0,right:0,padding:'8px',background:'linear-gradient(transparent,rgba(0,0,0,0.7))'}}>
+                    <p style={{color:'white',fontSize:'11px',margin:0,textAlign:'center'}}>{eventPhotos[0].caption}</p>
                   </div>}
                 </div>
-              ))}
-            </div>
+                {/* Remaining photos */}
+                {eventPhotos.slice(1,3).map((p,i)=>(
+                  <div key={p._id||i} style={{position:'relative',aspectRatio:'4/3',overflow:'hidden'}}>
+                    <img src={p.url} alt={p.caption||'Event'} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                    {p.caption&&<div style={{position:'absolute',bottom:0,left:0,right:0,padding:'6px',background:'linear-gradient(transparent,rgba(0,0,0,0.7))'}}>
+                      <p style={{color:'white',fontSize:'10px',margin:0,textAlign:'center'}}>{p.caption}</p>
+                    </div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
