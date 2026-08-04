@@ -495,10 +495,10 @@ const GuestList = () => {
           <Input label="Notes" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
       </Modal>
-    </div>
 
       {/* Card Preview Popup */}
       <CardPreviewModal guest={previewGuest} onClose={() => setPreviewGuest(null)} />
+    </div>
   );
 };
 
