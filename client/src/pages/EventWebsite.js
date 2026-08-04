@@ -5,7 +5,7 @@ import { publicAPI, rsvpAPI } from '../api';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-// Simple countdown without external package
+// v2 - custom countdown, no external packages
 const CountdownTimer = ({ targetDate }) => {
   const [timeLeft, setTimeLeft] = useState({});
   const [completed, setCompleted] = useState(false);

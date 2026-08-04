@@ -63,7 +63,12 @@ const AppRoutes = () => {
           <Route index element={<Scanner />} />
         </Route>
 
-        <Route path="*" element={<Navigate to={user ? (user.role === 'scanner' ? '/scanner' : '/dashboard') : '/login'} replace />} />
+        <Route path="*" element={
+          // Only redirect unknown routes, not /event/* paths
+          window.location.pathname.startsWith('/event/')
+            ? null
+            : <Navigate to={user ? (user.role === 'scanner' ? '/scanner' : '/dashboard') : '/login'} replace />
+        } />
       </Routes>
     </Suspense>
   );
