@@ -1,10 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { publicAPI, rsvpAPI } from '../api';
-import Countdown from 'react-countdown';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+
+// Simple countdown without external package
+const CountdownTimer = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = useState({});
+  const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    const calculate = () => {
+      const diff = new Date(targetDate) - new Date();
+      if (diff <= 0) { setCompleted(true); return; }
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    calculate();
+    const timer = setInterval(calculate, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (completed) return (
+    <div style={{ textAlign: 'center', padding: '16px 0' }}>
+      <span style={{ color: '#C9A84C', fontSize: '18px', fontFamily: 'Poppins', fontWeight: 700 }}>
+        The event is happening now!
+      </span>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+      {[
+        { v: timeLeft.days, l: 'Days' },
+        { v: timeLeft.hours, l: 'Hours' },
+        { v: timeLeft.minutes, l: 'Min' },
+        { v: timeLeft.seconds, l: 'Sec' },
+      ].map(({ v, l }) => (
+        <div key={l} style={{ textAlign: 'center', minWidth: '56px' }}>
+          <div style={{
+            background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)',
+            borderRadius: '10px', padding: '10px 8px',
+            fontFamily: 'Poppins', fontSize: '28px', fontWeight: 700,
+            color: '#C9A84C', lineHeight: 1, minWidth: '48px',
+          }}>
+            {String(v ?? 0).padStart(2, '0')}
+          </div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            {l}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const EventWebsite = () => {
   const { slug } = useParams();
@@ -63,35 +117,6 @@ const EventWebsite = () => {
 
   const event = data.event;
   const guest = data.guest;
-
-  // Countdown renderer
-  const countdownRenderer = ({ days, hours, minutes, seconds, completed }) => {
-    if (completed) return (
-      <div style={{ textAlign: 'center', padding: '16px 0' }}>
-        <span style={{ color: 'var(--secondary)', fontSize: '18px', fontFamily: 'Poppins', fontWeight: 700 }}>
-          The event is happening now!
-        </span>
-      </div>
-    );
-    return (
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-        {[{ v: days, l: 'Days' }, { v: hours, l: 'Hours' }, { v: minutes, l: 'Min' }, { v: seconds, l: 'Sec' }].map(({ v, l }) => (
-          <div key={l} style={{ textAlign: 'center', minWidth: '56px' }}>
-            <div style={{
-              background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)',
-              borderRadius: '10px', padding: '10px 8px',
-              fontFamily: 'Poppins', fontSize: '32px', fontWeight: 700, color: '#C9A84C', lineHeight: 1,
-            }}>
-              {String(v).padStart(2, '0')}
-            </div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              {l}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #1A0A00 0%, #3D2808 50%, #1A0A00 100%)' }}>
@@ -202,7 +227,7 @@ const EventWebsite = () => {
                 <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '14px' }}>
                   Event Countdown
                 </p>
-                <Countdown date={new Date(event.date)} renderer={countdownRenderer} />
+                <CountdownTimer targetDate={new Date(event.date)} />
               </div>
             )}
 
