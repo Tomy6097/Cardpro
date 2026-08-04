@@ -250,6 +250,17 @@ exports.updateWebsiteTheme = asyncHandler(async (req, res) => {
   res.json({ success: true, event });
 });
 
+exports.updateDressCodeColors = asyncHandler(async (req, res) => {
+  const { colors } = req.body; // array of {name, hex}
+  const event = await Event.findByIdAndUpdate(
+    req.params.id,
+    { $set: { dressCodeColors: colors } },
+    { new: true, runValidators: false }
+  );
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+  res.json({ success: true, event });
+});
+
 exports.uploadDressCodeImage = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });

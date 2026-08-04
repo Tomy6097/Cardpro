@@ -24,6 +24,7 @@ export const eventsAPI = {
   }),
   updateCardConfig: (id, data) => api.put(`/events/${id}/card-config`, data),
   updateWebsiteTheme: (id, data) => api.put(`/events/${id}/website-theme`, data),
+  updateDressCodeColors: (id, data) => api.put(`/events/${id}/dresscode-colors`, data),
   uploadDressCodeImage: (id, formData) => api.post(`/events/${id}/dresscode`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteDressCodeImage: (id, imageId) => api.delete(`/events/${id}/dresscode/${imageId}`),
   uploadEventPhoto: (id, formData) => api.post(`/events/${id}/photos`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),

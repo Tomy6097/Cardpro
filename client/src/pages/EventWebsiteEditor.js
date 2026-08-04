@@ -25,6 +25,9 @@ const EventWebsiteEditor = () => {
   const [dressCaption, setDressCaption] = useState('');
   const [dressGender, setDressGender] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
+  const [dressColors, setDressColors] = useState([]);
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorHex, setNewColorHex] = useState('#C9A84C');
 
   const { data: eventData, isLoading } = useQuery({
     queryKey: ['event', eventId],
@@ -34,6 +37,9 @@ const EventWebsiteEditor = () => {
   useEffect(() => {
     if (eventData?.event?.websiteTheme) {
       setTheme(p => ({ ...p, ...eventData.event.websiteTheme }));
+    }
+    if (eventData?.event?.dressCodeColors) {
+      setDressColors(eventData.event.dressCodeColors);
     }
   }, [eventData]);
 
@@ -62,6 +68,12 @@ const EventWebsiteEditor = () => {
     onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Removed.'); },
     onError: err => toast.error(err.message),
   });
+  const colorsMutation = useMutation({
+    mutationFn: colors => eventsAPI.updateDressCodeColors(eventId, { colors }),
+    onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Colors saved.'); },
+    onError: err => toast.error(err.message),
+  });
+
   const uploadVideoMutation = useMutation({
     mutationFn: fd => eventsAPI.uploadVideo(eventId, fd),
     onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Video uploaded!'); },
@@ -171,8 +183,61 @@ const EventWebsiteEditor = () => {
 
           {/* Dress Code */}
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px' }}>👔 Dress Code Samples</h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>Upload images showing how guests should dress</p>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/>
+              </svg>
+              Dress Code Samples
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 14px' }}>Upload images showing how guests should dress</p>
+
+            {/* ── Dress Code Colors ── */}
+            <div style={{ marginBottom: '16px', padding: '14px', background: 'var(--cream)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                </svg>
+                Event Color Palette
+              </p>
+
+              {/* Existing colors */}
+              {dressColors.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  {dressColors.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px 4px 6px', background: 'white', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: c.hex, border: '2px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>{c.name}</span>
+                      <button onClick={() => { const arr = dressColors.filter((_,j) => j !== i); setDressColors(arr); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '14px', padding: '0', lineHeight: 1, marginLeft: '2px' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new color */}
+              <div style={{ display: 'flex', gap: '7px', alignItems: 'center' }}>
+                <input type="color" value={newColorHex} onChange={e => setNewColorHex(e.target.value)} style={{ width: '34px', height: '30px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', padding: '2px', flexShrink: 0 }} />
+                <input type="text" placeholder="Color name (e.g. Royal Blue)" value={newColorName} onChange={e => setNewColorName(e.target.value)}
+                  style={{ flex: 1, padding: '6px 9px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none' }}
+                  onKeyPress={e => {
+                    if (e.key === 'Enter' && newColorName.trim()) {
+                      setDressColors(p => [...p, { name: newColorName.trim(), hex: newColorHex }]);
+                      setNewColorName('');
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => { if (newColorName.trim()) { setDressColors(p => [...p, { name: newColorName.trim(), hex: newColorHex }]); setNewColorName(''); } }}
+                  style={{ padding: '6px 12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Add
+                </button>
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                <Button variant="secondary" size="sm" onClick={() => colorsMutation.mutate(dressColors)} loading={colorsMutation.isPending}>
+                  Save Colors
+                </Button>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '7px', marginBottom: '10px', flexWrap: 'wrap' }}>
               <input type="text" placeholder="Caption" value={dressCaption} onChange={e => setDressCaption(e.target.value)} style={{ flex: 1, padding: '6px 9px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none', minWidth: '100px' }} />
               <select value={dressGender} onChange={e => setDressGender(e.target.value)} style={{ padding: '6px 9px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none', background: 'var(--white)' }}>
@@ -199,7 +264,12 @@ const EventWebsiteEditor = () => {
 
           {/* Event Photos */}
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px' }}>📸 Event Photos</h3>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Event Photos
+            </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>Add couple/bridegroom or venue photos</p>
             <div style={{ display: 'flex', gap: '7px', marginBottom: '10px' }}>
               <input type="text" placeholder="Caption (e.g. The Couple)" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} style={{ flex: 1, padding: '6px 9px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none' }} />
@@ -222,7 +292,12 @@ const EventWebsiteEditor = () => {
 
           {/* Video Upload */}
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px' }}>🎬 Invitation Video</h3>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>
+              Invitation Video
+            </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>Upload a short video (max 50MB) shown on the guest website</p>
 
             {ev?.invitationVideo?.url && (

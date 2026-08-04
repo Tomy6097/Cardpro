@@ -73,6 +73,12 @@ const eventSchema = new mongoose.Schema({
     gender: { type: String, enum: ['male', 'female', 'general'], default: 'general' },
   }],
 
+  // Dress Code Colors
+  dressCodeColors: [{
+    name: { type: String },
+    hex: { type: String },
+  }],
+
   // Event/Wedding Photos (bridegroom, venue etc)
   eventPhotos: [{
     url: { type: String },

@@ -145,9 +145,9 @@ const EventWebsite = () => {
             <h1 style={{fontFamily:ff,fontSize:'26px',color:ac,textAlign:'center',margin:'0 0 4px'}}>{event.name}</h1>
             <p style={{textAlign:'center',color:`${ac}66`,fontSize:'14px',margin:'0 0 22px'}}>by {event.clientName}</p>
             {[
-              {icon:'📅',text:`${fmtDate(event.date)}${event.time?` at ${event.time}`:''}`},
-              {icon:'📍',text:event.venue},
-              event.dressCode&&{icon:'👔',text:`Dress Code: ${event.dressCode}`},
+              {icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>, text:`${fmtDate(event.date)}${event.time?` at ${event.time}`:''}`},
+              {icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>, text:event.venue},
+              event.dressCode&&{icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>, text:`Dress Code: ${event.dressCode}`},
             ].filter(Boolean).map((item,i)=>(
               <div key={i} style={{display:'flex',gap:'12px',padding:'11px 13px',background:'rgba(255,255,255,0.04)',borderRadius:'10px',marginBottom:'8px',border:`1px solid ${ac}11`}}>
                 <span style={{fontSize:'16px'}}>{item.icon}</span>
@@ -194,7 +194,8 @@ const EventWebsite = () => {
             )}
             {event.googleMapsUrl&&(
               <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',marginTop:'16px',padding:'11px',borderRadius:'10px',background:'rgba(255,255,255,0.05)',border:`1px solid ${ac}11`,color:`${ac}66`,textDecoration:'none',fontSize:'13px'}}>
-                📍 View on Google Maps
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                View on Google Maps
               </a>
             )}
           </div>
@@ -202,28 +203,52 @@ const EventWebsite = () => {
         </div>
 
         {/* Dress Code */}
-        {dressImages.length>0&&(
+        {(dressImages.length>0 || (event.dressCodeColors||[]).length>0) &&(
           <div style={{marginBottom:'16px',background:'rgba(255,255,255,0.04)',borderRadius:'16px',border:`1px solid ${ac}11`,overflow:'hidden'}}>
-            <div style={{padding:'14px 18px 10px',borderBottom:`1px solid ${ac}11`}}>
-              <p style={{color:`${ac}88`,fontSize:'11px',textTransform:'uppercase',letterSpacing:'2px',margin:0}}>👔 Dress Code</p>
-              {event.dressCode&&<p style={{color:pc,fontSize:'14px',fontWeight:600,margin:'4px 0 0'}}>{event.dressCode}</p>}
-            </div>
-            <div style={{padding:'14px 18px'}}>
-              <div style={{display:'grid',gridTemplateColumns:`repeat(${Math.min(dressImages.length,3)},1fr)`,gap:'10px'}}>
-                {dressImages.map((img,i)=>(
-                  <div key={img._id||i} style={{borderRadius:'10px',overflow:'hidden',border:`1px solid ${ac}11`}}>
-                    <img src={img.url} alt={img.caption||'Dress'} style={{width:'100%',aspectRatio:'3/4',objectFit:'cover',display:'block'}}/>
-                    {(img.caption||img.gender!=='general')&&(
-                      <div style={{padding:'6px 8px',background:`${bg}cc`}}>
-                        <p style={{color:pc,fontSize:'11px',margin:0,textAlign:'center',fontWeight:600}}>
-                          {img.gender==='female'?'👗 Ladies':img.gender==='male'?'👔 Gentlemen':''}{img.caption?` ${img.caption}`:''}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            <div style={{padding:'14px 18px 10px',borderBottom:`1px solid ${ac}11`,display:'flex',alignItems:'center',gap:'8px'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2">
+                <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/>
+              </svg>
+              <div>
+                <p style={{color:`${ac}88`,fontSize:'11px',textTransform:'uppercase',letterSpacing:'2px',margin:0}}>Dress Code</p>
+                {event.dressCode&&<p style={{color:pc,fontSize:'14px',fontWeight:600,margin:'2px 0 0'}}>{event.dressCode}</p>}
               </div>
             </div>
+
+            {/* Color palette */}
+            {(event.dressCodeColors||[]).length>0&&(
+              <div style={{padding:'14px 18px',borderBottom:dressImages.length>0?`1px solid ${ac}11`:'none'}}>
+                <p style={{color:`${ac}55`,fontSize:'11px',textTransform:'uppercase',letterSpacing:'1px',margin:'0 0 10px'}}>Color Palette</p>
+                <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+                  {event.dressCodeColors.map((c,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 14px 6px 8px',background:'rgba(255,255,255,0.06)',borderRadius:'24px',border:`1px solid ${ac}15`}}>
+                      <div style={{width:'24px',height:'24px',borderRadius:'50%',background:c.hex,border:'2px solid rgba(255,255,255,0.2)',flexShrink:0,boxShadow:`0 2px 8px ${c.hex}66`}}/>
+                      <span style={{color:`${ac}cc`,fontSize:'13px',fontWeight:500,fontFamily:ff}}>{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dress code images */}
+            {dressImages.length>0&&(
+              <div style={{padding:'14px 18px'}}>
+                <div style={{display:'grid',gridTemplateColumns:`repeat(${Math.min(dressImages.length,3)},1fr)`,gap:'10px'}}>
+                  {dressImages.map((img,i)=>(
+                    <div key={img._id||i} style={{borderRadius:'10px',overflow:'hidden',border:`1px solid ${ac}11`}}>
+                      <img src={img.url} alt={img.caption||'Dress'} style={{width:'100%',aspectRatio:'3/4',objectFit:'cover',display:'block'}}/>
+                      {(img.caption||img.gender!=='general')&&(
+                        <div style={{padding:'6px 8px',background:`${bg}cc`}}>
+                          <p style={{color:pc,fontSize:'11px',margin:0,textAlign:'center',fontWeight:600}}>
+                            {img.gender==='female'?'Ladies':img.gender==='male'?'Gentlemen':''}{img.caption?` — ${img.caption}`:''}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

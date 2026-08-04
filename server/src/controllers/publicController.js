@@ -7,7 +7,7 @@ exports.getEventPublic = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
   const event = await Event.findOne({ slug, status: { $ne: 'cancelled' } })
-    .select('name clientName date time venue description dressCode googleMapsUrl invitationVideo coverImage status slug websiteTheme dressCodeImages eventPhotos');
+    .select('name clientName date time venue description dressCode googleMapsUrl invitationVideo coverImage status slug websiteTheme dressCodeImages dressCodeColors eventPhotos');
 
   if (!event) {
     return res.status(404).json({ success: false, message: 'Event not found.' });
@@ -22,7 +22,7 @@ exports.getGuestInvitation = asyncHandler(async (req, res) => {
   const { code } = req.query;
 
   const event = await Event.findOne({ slug })
-    .select('name clientName date time venue description dressCode googleMapsUrl invitationVideo coverImage status websiteTheme dressCodeImages eventPhotos');
+    .select('name clientName date time venue description dressCode googleMapsUrl invitationVideo coverImage status websiteTheme dressCodeImages dressCodeColors eventPhotos');
 
   if (!event) {
     return res.status(404).json({ success: false, message: 'Event not found.' });
