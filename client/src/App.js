@@ -18,6 +18,7 @@ const RSVPDashboard = lazy(() => import('./pages/RSVPDashboard'));
 const Scanner = lazy(() => import('./pages/Scanner'));
 const ActivityLog = lazy(() => import('./pages/ActivityLog'));
 const Settings = lazy(() => import('./pages/Settings'));
+const EventWebsiteEditor = lazy(() => import('./pages/EventWebsiteEditor'));
 const EventWebsite = lazy(() => import('./pages/EventWebsite'));
 
 const ProtectedRoute = ({ children, role }) => {
@@ -64,6 +65,7 @@ const AppRoutes = () => {
           <Route path="events/:id/invitations" element={<Invitations />} />
           <Route path="events/:id/rsvp" element={<RSVPDashboard />} />
           <Route path="events/:id/activity" element={<ActivityLog />} />
+          <Route path="events/:id/website" element={<EventWebsiteEditor />} />
           <Route path="activity" element={<ActivityLog />} />
           <Route path="settings" element={<Settings />} />
         </Route>

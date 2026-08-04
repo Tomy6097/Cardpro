@@ -23,6 +23,11 @@ export const eventsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   updateCardConfig: (id, data) => api.put(`/events/${id}/card-config`, data),
+  updateWebsiteTheme: (id, data) => api.put(`/events/${id}/website-theme`, data),
+  uploadDressCodeImage: (id, formData) => api.post(`/events/${id}/dresscode`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteDressCodeImage: (id, imageId) => api.delete(`/events/${id}/dresscode/${imageId}`),
+  uploadEventPhoto: (id, formData) => api.post(`/events/${id}/photos`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteEventPhoto: (id, photoId) => api.delete(`/events/${id}/photos/${photoId}`),
 };
 
 // Guests

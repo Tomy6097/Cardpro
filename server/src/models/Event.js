@@ -56,6 +56,30 @@ const eventSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+
+  // Website Theme Customization
+  websiteTheme: {
+    primaryColor: { type: String, default: '#C9A84C' },
+    bgColor: { type: String, default: '#1A0A00' },
+    accentColor: { type: String, default: '#FFFFFF' },
+    fontStyle: { type: String, default: 'serif' },
+  },
+
+  // Dress Code Images
+  dressCodeImages: [{
+    url: { type: String },
+    publicId: { type: String },
+    caption: { type: String },
+    gender: { type: String, enum: ['male', 'female', 'general'], default: 'general' },
+  }],
+
+  // Event/Wedding Photos (bridegroom, venue etc)
+  eventPhotos: [{
+    url: { type: String },
+    publicId: { type: String },
+    caption: { type: String },
+  }],
+
 }, { timestamps: true });
 
 // Auto-generate slug

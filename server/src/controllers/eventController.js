@@ -238,3 +238,79 @@ exports.getEventStats = asyncHandler(async (req, res) => {
     stats: { total, confirmed, pending, declined, scanned, smsSent, whatsappSent },
   });
 });
+
+exports.updateWebsiteTheme = asyncHandler(async (req, res) => {
+  const { primaryColor, bgColor, accentColor, fontStyle } = req.body;
+  const event = await Event.findByIdAndUpdate(
+    req.params.id,
+    { $set: { 'websiteTheme.primaryColor': primaryColor, 'websiteTheme.bgColor': bgColor, 'websiteTheme.accentColor': accentColor, 'websiteTheme.fontStyle': fontStyle } },
+    { new: true, runValidators: false }
+  );
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+  res.json({ success: true, event });
+});
+
+exports.uploadDressCodeImage = asyncHandler(async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+  const result = await uploadToCloudinary(req.file.buffer, {
+    folder: `cardpro/events/${event._id}/dresscode`,
+    format: 'jpg',
+    transformation: [{ quality: 'auto:good', width: 800 }],
+  });
+
+  event.dressCodeImages.push({
+    url: result.secure_url,
+    publicId: result.public_id,
+    caption: req.body.caption || '',
+    gender: req.body.gender || 'general',
+  });
+  await event.save();
+  res.json({ success: true, event });
+});
+
+exports.deleteDressCodeImage = asyncHandler(async (req, res) => {
+  const { id, imageId } = req.params;
+  const event = await Event.findById(id);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+  const img = event.dressCodeImages.id(imageId);
+  if (img?.publicId) await deleteFromCloudinary(img.publicId);
+  event.dressCodeImages.pull(imageId);
+  await event.save();
+  res.json({ success: true, event });
+});
+
+exports.uploadEventPhoto = asyncHandler(async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+  const result = await uploadToCloudinary(req.file.buffer, {
+    folder: `cardpro/events/${event._id}/photos`,
+    format: 'jpg',
+    transformation: [{ quality: 'auto:good', width: 1200 }],
+  });
+
+  event.eventPhotos.push({
+    url: result.secure_url,
+    publicId: result.public_id,
+    caption: req.body.caption || '',
+  });
+  await event.save();
+  res.json({ success: true, event });
+});
+
+exports.deleteEventPhoto = asyncHandler(async (req, res) => {
+  const { id, photoId } = req.params;
+  const event = await Event.findById(id);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+  const photo = event.eventPhotos.id(photoId);
+  if (photo?.publicId) await deleteFromCloudinary(photo.publicId);
+  event.eventPhotos.pull(photoId);
+  await event.save();
+  res.json({ success: true, event });
+});

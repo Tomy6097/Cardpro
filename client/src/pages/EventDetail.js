@@ -71,6 +71,19 @@ const modules = [
     color: '#8B6914',
     bg: '#FFFBEB',
   },
+  {
+    key: 'website',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+      </svg>
+    ),
+    title: 'Website Editor',
+    desc: 'Colors, dress code & event photos',
+    color: '#7C3AED',
+    bg: '#EDE9FE',
+  },
 ];
 
 const EventDetail = () => {
