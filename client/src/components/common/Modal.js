@@ -10,44 +10,39 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(26, 10, 0, 0.55)',
-        backdropFilter: 'blur(4px)',
-        padding: '16px',
-        overflowY: 'auto',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <>
+      {/* Backdrop */}
       <div
+        onClick={onClose}
         style={{
-          background: 'var(--white)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-xl)',
-          width: '100%',
-          maxWidth: width,
-          display: 'flex',
-          flexDirection: 'column',
-          animation: 'modalIn 0.18s ease',
-          position: 'relative',
-          margin: 'auto',
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: 'rgba(26,10,0,0.55)',
+          backdropFilter: 'blur(4px)',
         }}
-        onClick={e => e.stopPropagation()}
-      >
+      />
+
+      {/* Modal wrapper — centered using transform */}
+      <div style={{
+        position: 'fixed',
+        top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 1000,
+        width: `min(${width}, calc(100vw - 32px))`,
+        maxHeight: 'calc(100vh - 48px)',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--white)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 24px 60px rgba(26,10,0,0.3)',
+        animation: 'modalIn 0.18s ease',
+        overflow: 'hidden',
+      }}>
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '14px 20px',
           borderBottom: '1px solid var(--border-light)',
           flexShrink: 0,
-          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
-          background: 'var(--white)',
         }}>
           <h3 style={{
             fontFamily: 'Poppins', fontSize: '15px', fontWeight: 600,
@@ -59,7 +54,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
             background: 'var(--cream-dark)', border: 'none', cursor: 'pointer',
             width: '28px', height: '28px', borderRadius: '6px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-secondary)', flexShrink: 0,
+            color: 'var(--text-secondary)',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
@@ -67,16 +62,17 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
           </button>
         </div>
 
-        {/* Body */}
+        {/* Scrollable body */}
         <div style={{
           padding: '16px 20px',
           overflowY: 'auto',
-          maxHeight: 'calc(100vh - 160px)',
+          flex: 1,
+          minHeight: 0,
         }}>
           {children}
         </div>
 
-        {/* Footer */}
+        {/* Footer — always visible */}
         {footer && (
           <div style={{
             padding: '12px 20px',
@@ -84,19 +80,19 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
             display: 'flex', gap: '10px', justifyContent: 'flex-end',
             flexShrink: 0,
             background: 'var(--white)',
-            borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
           }}>
             {footer}
           </div>
         )}
       </div>
+
       <style>{`
         @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.97); }
-          to { opacity: 1; transform: scale(1); }
+          from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

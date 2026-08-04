@@ -21,33 +21,26 @@ const CardPreviewModal = ({ guest, onClose }) => {
   if (!guest) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 2000,
-        background: 'rgba(26,10,0,0.85)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        overflowY: 'auto',
-      }}
-      onClick={onClose}
-    >
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1999, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }} />
+
+      {/* Modal */}
       <div
         style={{
+          position: 'fixed',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 2000,
+          width: 'min(460px, calc(100vw - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
           background: 'var(--white)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: 'var(--shadow-xl)',
-          maxWidth: '460px',
-          width: '100%',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'modalIn 0.2s ease',
           overflow: 'hidden',
-          margin: 'auto',
+          animation: 'cardModalIn 0.2s ease',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -152,12 +145,12 @@ const CardPreviewModal = ({ guest, onClose }) => {
         )}
       </div>
       <style>{`
-        @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+        @keyframes cardModalIn {
+          from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 
