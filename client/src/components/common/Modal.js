@@ -20,28 +20,34 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         justifyContent: 'center',
         background: 'rgba(26, 10, 0, 0.55)',
         backdropFilter: 'blur(4px)',
-        padding: '12px',
+        padding: '16px',
+        overflowY: 'auto',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
-        background: 'var(--white)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-xl)',
-        width: '100%',
-        maxWidth: width,
-        maxHeight: '96vh',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        animation: 'modalIn 0.18s ease',
-      }}>
+      <div
+        style={{
+          background: 'var(--white)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-xl)',
+          width: '100%',
+          maxWidth: width,
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'modalIn 0.18s ease',
+          position: 'relative',
+          margin: 'auto',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '14px 20px',
           borderBottom: '1px solid var(--border-light)',
           flexShrink: 0,
+          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+          background: 'var(--white)',
         }}>
           <h3 style={{
             fontFamily: 'Poppins', fontSize: '15px', fontWeight: 600,
@@ -61,11 +67,11 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
           </button>
         </div>
 
-        {/* Body — scrollable */}
+        {/* Body */}
         <div style={{
           padding: '16px 20px',
           overflowY: 'auto',
-          flex: 1,
+          maxHeight: 'calc(100vh - 160px)',
         }}>
           {children}
         </div>
@@ -78,6 +84,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
             display: 'flex', gap: '10px', justifyContent: 'flex-end',
             flexShrink: 0,
             background: 'var(--white)',
+            borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
           }}>
             {footer}
           </div>

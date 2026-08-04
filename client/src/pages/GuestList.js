@@ -24,14 +24,14 @@ const CardPreviewModal = ({ guest, onClose }) => {
     <div
       style={{
         position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
+        inset: 0,
         zIndex: 2000,
         background: 'rgba(26,10,0,0.85)',
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
         overflowY: 'auto',
       }}
       onClick={onClose}
@@ -41,9 +41,8 @@ const CardPreviewModal = ({ guest, onClose }) => {
           background: 'var(--white)',
           borderRadius: 'var(--radius-xl)',
           boxShadow: 'var(--shadow-xl)',
-          maxWidth: '480px',
+          maxWidth: '460px',
           width: '100%',
-          maxHeight: 'calc(100vh - 40px)',
           display: 'flex',
           flexDirection: 'column',
           animation: 'modalIn 0.2s ease',
@@ -79,8 +78,8 @@ const CardPreviewModal = ({ guest, onClose }) => {
           </button>
         </div>
 
-        {/* Card Image — fills available space, no scroll needed */}
-        <div style={{ flex: 1, overflowY: 'auto', background: '#1a0a00' }}>
+        {/* Card Image — fills available space */}
+        <div style={{ background: '#1a0a00', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
           {guest.cardUrl ? (
             <img
               src={guest.cardUrl}
