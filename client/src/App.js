@@ -34,16 +34,26 @@ const ProtectedRoute = ({ children, role }) => {
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
-  if (loading) return <LoadingScreen />;
+
+  // For public event pages, don't wait for auth
+  const isPublicEventPage = window.location.pathname.startsWith('/event/');
+  if (loading && !isPublicEventPage) return <LoadingScreen />;
 
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={user.role === 'scanner' ? '/scanner' : '/dashboard'} replace />} />
+        {/* ── PUBLIC ROUTES ── no auth needed */}
         <Route path="/event/:slug" element={<EventWebsite />} />
+        <Route
+          path="/login"
+          element={
+            !loading && user
+              ? <Navigate to={user.role === 'scanner' ? '/scanner' : '/dashboard'} replace />
+              : <LoginPage />
+          }
+        />
 
-        {/* Admin routes */}
+        {/* ── ADMIN ROUTES ── */}
         <Route path="/" element={<ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
@@ -58,17 +68,20 @@ const AppRoutes = () => {
           <Route path="settings" element={<Settings />} />
         </Route>
 
-        {/* Scanner routes */}
+        {/* ── SCANNER ROUTES ── */}
         <Route path="/scanner" element={<ProtectedRoute><ScannerLayout /></ProtectedRoute>}>
           <Route index element={<Scanner />} />
         </Route>
 
-        <Route path="*" element={
-          // Only redirect unknown routes, not /event/* paths
-          window.location.pathname.startsWith('/event/')
-            ? null
-            : <Navigate to={user ? (user.role === 'scanner' ? '/scanner' : '/dashboard') : '/login'} replace />
-        } />
+        {/* ── CATCH ALL ── */}
+        <Route
+          path="*"
+          element={
+            loading
+              ? <LoadingScreen />
+              : <Navigate to={user ? (user.role === 'scanner' ? '/scanner' : '/dashboard') : '/login'} replace />
+          }
+        />
       </Routes>
     </Suspense>
   );
