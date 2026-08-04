@@ -76,23 +76,33 @@ const EventWebsite = () => {
       {photos.length > 0 && (
         <div style={{position:'relative',width:'100%'}}>
           {photos.length === 1 ? (
-            <div style={{position:'relative',maxHeight:'100vh',minHeight:'60vh',overflow:'hidden'}}>
-              <img src={photos[0].url} alt={photos[0].caption||'Event'} style={{width:'100%',height:'100vh',objectFit:'cover',objectPosition:'center center',display:'block'}}/>
-              <div style={{position:'absolute',inset:0,background:`linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 30%, transparent 60%, ${bg} 100%)`}}/>
+            <div style={{position:'relative',width:'100%',overflow:'hidden',background:bg}}>
+              <img
+                src={photos[0].url}
+                alt={photos[0].caption||'Event'}
+                style={{
+                  width:'100%',
+                  maxHeight:'95vh',
+                  objectFit:'contain',
+                  objectPosition:'center top',
+                  display:'block',
+                }}
+              />
+              <div style={{position:'absolute',inset:0,background:`linear-gradient(to bottom, transparent 70%, ${bg} 100%)`,pointerEvents:'none'}}/>
               {photos[0].caption&&(
                 <div style={{position:'absolute',bottom:'80px',left:0,right:0,textAlign:'center'}}>
-                  <p style={{color:'white',fontSize:'13px',margin:0,letterSpacing:'3px',textTransform:'uppercase'}}>{photos[0].caption}</p>
+                  <p style={{color:'white',fontSize:'13px',margin:0,letterSpacing:'3px',textTransform:'uppercase',textShadow:'0 2px 8px rgba(0,0,0,0.8)'}}>{photos[0].caption}</p>
                 </div>
               )}
             </div>
           ) : (
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',height:'100vh',maxHeight:'600px'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',background:bg}}>
               {photos.slice(0,2).map((p,i)=>(
                 <div key={p._id||i} style={{position:'relative',overflow:'hidden'}}>
-                  <img src={p.url} alt={p.caption||'Event'} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  <div style={{position:'absolute',inset:0,background:`linear-gradient(to bottom,transparent 50%,${bg})`}}/>
+                  <img src={p.url} alt={p.caption||'Event'} style={{width:'100%',maxHeight:'95vh',objectFit:'contain',objectPosition:'center top',display:'block'}}/>
+                  <div style={{position:'absolute',inset:0,background:`linear-gradient(to bottom,transparent 70%,${bg})`}}/>
                   {p.caption&&<div style={{position:'absolute',bottom:'70px',left:0,right:0,textAlign:'center'}}>
-                    <p style={{color:'white',fontSize:'12px',margin:0,letterSpacing:'2px',textTransform:'uppercase'}}>{p.caption}</p>
+                    <p style={{color:'white',fontSize:'12px',margin:0,letterSpacing:'2px',textTransform:'uppercase',textShadow:'0 2px 6px rgba(0,0,0,0.8)'}}>{p.caption}</p>
                   </div>}
                 </div>
               ))}
