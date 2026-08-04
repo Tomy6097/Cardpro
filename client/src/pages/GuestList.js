@@ -23,22 +23,32 @@ const CardPreviewModal = ({ guest, onClose }) => {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 2000,
+        background: 'rgba(26,10,0,0.85)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        overflowY: 'auto',
       }}
       onClick={onClose}
     >
       <div
         style={{
-          background: 'var(--white)', borderRadius: 'var(--radius-xl)',
+          background: 'var(--white)',
+          borderRadius: 'var(--radius-xl)',
           boxShadow: 'var(--shadow-xl)',
-          maxWidth: '480px', width: '100%',
-          maxHeight: '92vh',
-          display: 'flex', flexDirection: 'column',
+          maxWidth: '480px',
+          width: '100%',
+          maxHeight: 'calc(100vh - 40px)',
+          display: 'flex',
+          flexDirection: 'column',
           animation: 'modalIn 0.2s ease',
           overflow: 'hidden',
+          margin: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >

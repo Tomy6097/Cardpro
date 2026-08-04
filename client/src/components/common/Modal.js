@@ -13,11 +13,16 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
         background: 'rgba(26, 10, 0, 0.5)',
         backdropFilter: 'blur(4px)',
+        overflowY: 'auto',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -25,9 +30,13 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         background: 'var(--white)',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-xl)',
-        width: '100%', maxWidth: width,
-        maxHeight: '90vh', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column',
+        width: '100%',
+        maxWidth: width,
+        maxHeight: 'calc(100vh - 40px)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        margin: 'auto',
         animation: 'modalIn 0.2s ease',
       }}>
         {/* Header */}
@@ -67,8 +76,8 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
       </div>
       <style>{`
         @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
