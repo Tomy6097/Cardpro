@@ -1,338 +1,239 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { publicAPI, rsvpAPI } from '../api';
-import { format } from 'date-fns';
-import toast from 'react-hot-toast';
 
-// v2 - custom countdown, no external packages
-const CountdownTimer = ({ targetDate }) => {
-  const [timeLeft, setTimeLeft] = useState({});
-  const [completed, setCompleted] = useState(false);
-
-  useEffect(() => {
-    const calculate = () => {
-      const diff = new Date(targetDate) - new Date();
-      if (diff <= 0) { setCompleted(true); return; }
-      setTimeLeft({
-        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((diff / (1000 * 60)) % 60),
-        seconds: Math.floor((diff / 1000) % 60),
-      });
-    };
-    calculate();
-    const timer = setInterval(calculate, 1000);
-    return () => clearInterval(timer);
-  }, [targetDate]);
-
-  if (completed) return (
-    <div style={{ textAlign: 'center', padding: '16px 0' }}>
-      <span style={{ color: '#C9A84C', fontSize: '18px', fontFamily: 'Poppins', fontWeight: 700 }}>
-        The event is happening now!
-      </span>
-    </div>
-  );
-
-  return (
-    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-      {[
-        { v: timeLeft.days, l: 'Days' },
-        { v: timeLeft.hours, l: 'Hours' },
-        { v: timeLeft.minutes, l: 'Min' },
-        { v: timeLeft.seconds, l: 'Sec' },
-      ].map(({ v, l }) => (
-        <div key={l} style={{ textAlign: 'center', minWidth: '56px' }}>
-          <div style={{
-            background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)',
-            borderRadius: '10px', padding: '10px 8px',
-            fontFamily: 'Poppins', fontSize: '28px', fontWeight: 700,
-            color: '#C9A84C', lineHeight: 1, minWidth: '48px',
-          }}>
-            {String(v ?? 0).padStart(2, '0')}
-          </div>
-          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            {l}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+const API = process.env.REACT_APP_API_URL || '/api';
 
 const EventWebsite = () => {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
+
+  const [event, setEvent] = useState(null);
+  const [guest, setGuest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpDeclined, setRsvpDeclined] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({});
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['public-event', slug, code],
-    queryFn: () => code
-      ? publicAPI.getInvitation(slug, code).then(r => r.data)
-      : publicAPI.getEvent(slug).then(r => r.data),
-    retry: 2,
-  });
+  // Fetch event data
+  useEffect(() => {
+    const url = code
+      ? `${API}/public/event/${slug}/invitation?code=${code}`
+      : `${API}/public/event/${slug}`;
 
-  const confirmMutation = useMutation({
-    mutationFn: () => rsvpAPI.confirm(code),
-    onSuccess: () => { setRsvpDone(true); toast.success('Attendance confirmed!'); },
-    onError: (err) => toast.error(err.message),
-  });
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setEvent(data.event);
+          setGuest(data.guest || null);
+        } else {
+          setError(data.message || 'Event not found');
+        }
+      })
+      .catch(err => setError('Failed to load event'))
+      .finally(() => setLoading(false));
+  }, [slug, code]);
 
-  const declineMutation = useMutation({
-    mutationFn: () => rsvpAPI.decline(code),
-    onSuccess: () => { setRsvpDeclined(true); },
-    onError: (err) => toast.error(err.message),
-  });
+  // Countdown timer
+  useEffect(() => {
+    if (!event?.date) return;
+    const calc = () => {
+      const diff = new Date(event.date) - new Date();
+      if (diff <= 0) { setTimeLeft({ done: true }); return; }
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff / 3600000) % 24),
+        minutes: Math.floor((diff / 60000) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    calc();
+    const t = setInterval(calc, 1000);
+    return () => clearInterval(t);
+  }, [event?.date]);
 
-  // Loading state
-  if (isLoading) return (
+  const handleConfirm = async () => {
+    try {
+      const r = await fetch(`${API}/rsvp/confirm/${code}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) setRsvpDone(true);
+    } catch {}
+  };
+
+  const handleDecline = async () => {
+    try {
+      const r = await fetch(`${API}/rsvp/decline/${code}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) setRsvpDeclined(true);
+    } catch {}
+  };
+
+  const formatDate = (d) => {
+    if (!d) return '';
+    try {
+      return new Date(d).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    } catch { return d; }
+  };
+
+  // ── LOADING ──
+  if (loading) return (
     <div style={{ minHeight: '100vh', background: '#1A0A00', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px' }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C9A84C', animation: `bounce 1.2s ease ${i*0.2}s infinite` }} />
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C9A84C', animation: `dot 1.2s ${i * 0.2}s ease-in-out infinite` }} />
           ))}
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Poppins', fontSize: '14px' }}>Loading invitation...</p>
-        <style>{`@keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.5} 40%{transform:translateY(-8px);opacity:1} }`}</style>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif' }}>Loading invitation...</p>
+        <style>{`@keyframes dot{0%,80%,100%{opacity:.3;transform:scale(1)}40%{opacity:1;transform:scale(1.3)}}`}</style>
       </div>
     </div>
   );
 
-  // Error / not found
-  if (isError || !data?.event) return (
+  // ── ERROR ──
+  if (error || !event) return (
     <div style={{ minHeight: '100vh', background: '#1A0A00', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center', color: 'white' }}>
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <h2 style={{ fontFamily: 'Poppins', fontSize: '20px', marginBottom: '8px' }}>Event Not Found</h2>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>This event may have been cancelled or the link is invalid.</p>
+        <p style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</p>
+        <h2 style={{ fontFamily: 'sans-serif', marginBottom: '8px' }}>Event Not Found</h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{error || 'This event link is invalid or expired.'}</p>
       </div>
     </div>
   );
 
-  const event = data.event;
-  const guest = data.guest;
-
+  // ── EVENT PAGE ──
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #1A0A00 0%, #3D2808 50%, #1A0A00 100%)' }}>
-      {/* Decorations */}
-      <div style={{ position: 'fixed', top: '-100px', right: '-100px', width: '350px', height: '350px', borderRadius: '50%', background: 'rgba(201,168,76,0.04)', pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', bottom: '-80px', left: '-80px', width: '280px', height: '280px', borderRadius: '50%', background: 'rgba(201,168,76,0.04)', pointerEvents: 'none' }} />
-
-      <div style={{ maxWidth: '520px', margin: '0 auto', padding: '32px 16px 48px' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#1A0A00,#3D2808,#1A0A00)', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '520px', margin: '0 auto', padding: '32px 16px 60px' }}>
 
         {/* Branding */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <span style={{ fontFamily: 'Poppins', fontSize: '11px', letterSpacing: '3px', color: 'rgba(201,168,76,0.6)', textTransform: 'uppercase' }}>
-            Powered by Cardpro
-          </span>
-        </div>
+        <p style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '3px', color: 'rgba(201,168,76,0.5)', textTransform: 'uppercase', marginBottom: '24px' }}>
+          Cardpro Invitation
+        </p>
 
-        {/* ── GUEST CARD (shown when guest has a card) ── */}
+        {/* Guest Card Image */}
         {guest?.cardUrl && (
-          <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-            <img
-              src={guest.cardUrl}
-              alt={`Invitation card for ${guest.guestName}`}
-              style={{ width: '100%', display: 'block' }}
-            />
+          <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+            <img src={guest.cardUrl} alt="Your invitation card" style={{ width: '100%', display: 'block' }} />
           </div>
         )}
 
-        {/* ── MAIN INVITATION CARD ── */}
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '20px',
-          border: '1px solid rgba(201,168,76,0.2)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
-          overflow: 'hidden',
-          marginBottom: '16px',
-        }}>
-          {/* Gold divider top */}
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }} />
+        {/* Main Card */}
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '20px', border: '1px solid rgba(201,168,76,0.2)', overflow: 'hidden', marginBottom: '16px' }}>
+          {/* Gold line */}
+          <div style={{ height: '3px', background: 'linear-gradient(90deg,transparent,#C9A84C,transparent)' }} />
 
-          <div style={{ padding: '28px 24px' }}>
-            {/* Guest name if logged in */}
+          <div style={{ padding: '28px 22px' }}>
+
+            {/* Guest greeting */}
             {guest && (
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 6px' }}>
-                  Dear
-                </p>
-                <h2 style={{ fontFamily: 'Poppins', fontSize: '26px', fontWeight: 700, color: '#C9A84C', margin: 0 }}>
-                  {guest.guestName}
-                </h2>
-                <div style={{ display: 'inline-block', marginTop: '8px', padding: '3px 14px', borderRadius: '20px', background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)' }}>
-                  <span style={{ fontSize: '12px', color: '#C9A84C', fontWeight: 600, letterSpacing: '1px' }}>
-                    {guest.ticketType?.toUpperCase()} TICKET
-                  </span>
-                </div>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 6px' }}>Dear</p>
+                <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '28px', color: '#C9A84C', margin: '0 0 8px' }}>{guest.guestName}</h2>
+                <span style={{ display: 'inline-block', padding: '3px 14px', borderRadius: '20px', background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)', fontSize: '12px', color: '#C9A84C', fontWeight: 600, letterSpacing: '1px' }}>
+                  {guest.ticketType?.toUpperCase()} TICKET
+                </span>
               </div>
             )}
 
             {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.4))' }} />
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#C9A84C">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(201,168,76,0.4), transparent)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(201,168,76,0.3)' }} />
+              <span style={{ color: '#C9A84C', fontSize: '16px' }}>✦</span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(201,168,76,0.3)' }} />
             </div>
 
-            <p style={{ textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.4)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              You Are Cordially Invited To
-            </p>
-            <h1 style={{ fontFamily: 'Poppins', fontSize: '26px', fontWeight: 700, color: 'white', textAlign: 'center', margin: '0 0 4px', lineHeight: 1.3 }}>
-              {event.name}
-            </h1>
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginBottom: '24px' }}>
-              Hosted by {event.clientName}
-            </p>
+            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 8px' }}>You Are Invited To</p>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', color: 'white', textAlign: 'center', margin: '0 0 4px' }}>{event.name}</h1>
+            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: '14px', margin: '0 0 22px' }}>by {event.clientName}</p>
 
-            {/* Event Details */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-              {[
-                {
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
-                  text: event.date ? `${format(new Date(event.date), 'EEEE, MMMM d, yyyy')}${event.time ? ` at ${event.time}` : ''}` : '—',
-                },
-                {
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-                  text: event.venue,
-                },
-                event.dressCode && {
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>,
-                  text: `Dress Code: ${event.dressCode}`,
-                },
-              ].filter(Boolean).map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '12px',
-                  padding: '12px 14px', background: 'rgba(255,255,255,0.04)',
-                  borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <div style={{ flexShrink: 0, marginTop: '1px' }}>{item.icon}</div>
-                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', lineHeight: 1.5 }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
+            {/* Details */}
+            {[
+              { icon: '📅', text: `${formatDate(event.date)}${event.time ? ` at ${event.time}` : ''}` },
+              { icon: '📍', text: event.venue },
+              event.dressCode && { icon: '👔', text: `Dress Code: ${event.dressCode}` },
+            ].filter(Boolean).map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '12px', padding: '11px 13px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span>{item.icon}</span>
+                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px' }}>{item.text}</span>
+              </div>
+            ))}
 
             {/* Countdown */}
-            {event.date && (
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '14px' }}>
-                  Event Countdown
-                </p>
-                <CountdownTimer targetDate={new Date(event.date)} />
+            {event.date && !timeLeft.done && (
+              <div style={{ margin: '20px 0' }}>
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '14px' }}>Event Countdown</p>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  {[['days', 'Days'], ['hours', 'Hrs'], ['minutes', 'Min'], ['seconds', 'Sec']].map(([k, l]) => (
+                    <div key={k} style={{ textAlign: 'center' }}>
+                      <div style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: '10px', padding: '10px 10px 8px', fontFamily: 'Georgia', fontSize: '28px', fontWeight: 700, color: '#C9A84C', lineHeight: 1, minWidth: '52px' }}>
+                        {String(timeLeft[k] ?? 0).padStart(2, '0')}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '4px', textTransform: 'uppercase' }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+            {timeLeft.done && (
+              <p style={{ textAlign: 'center', color: '#C9A84C', fontWeight: 700, fontSize: '16px', margin: '20px 0' }}>The event is happening now!</p>
+            )}
 
-            {/* RSVP Buttons */}
+            {/* RSVP */}
             {guest && code && !rsvpDone && !rsvpDeclined && guest.rsvpStatus !== 'confirmed' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <button
-                  onClick={() => confirmMutation.mutate()}
-                  disabled={confirmMutation.isPending}
-                  style={{
-                    padding: '15px', background: 'linear-gradient(135deg, #C9A84C, #B8860B)',
-                    color: 'white', border: 'none', borderRadius: '12px',
-                    fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-                    fontFamily: 'Poppins', letterSpacing: '0.5px',
-                    boxShadow: '0 4px 15px rgba(201,168,76,0.35)',
-                  }}
-                >
-                  {confirmMutation.isPending ? 'Confirming...' : 'Confirm My Attendance'}
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button onClick={handleConfirm} style={{ padding: '15px', background: 'linear-gradient(135deg,#C9A84C,#B8860B)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.5px' }}>
+                  Confirm My Attendance
                 </button>
-                <button
-                  onClick={() => declineMutation.mutate()}
-                  disabled={declineMutation.isPending}
-                  style={{
-                    padding: '11px', background: 'transparent',
-                    color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter',
-                  }}
-                >
+                <button onClick={handleDecline} style={{ padding: '11px', background: 'transparent', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
                   Unable to Attend
                 </button>
               </div>
             )}
 
-            {/* Already confirmed */}
             {(rsvpDone || guest?.rsvpStatus === 'confirmed') && (
-              <div style={{ padding: '18px', background: 'rgba(45,106,79,0.2)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(45,106,79,0.4)', marginBottom: '16px' }}>
+              <div style={{ marginTop: '20px', padding: '18px', background: 'rgba(45,106,79,0.2)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(45,106,79,0.4)' }}>
                 <p style={{ fontSize: '28px', margin: '0 0 6px' }}>✓</p>
-                <p style={{ fontFamily: 'Poppins', fontSize: '16px', fontWeight: 700, color: '#86EFAC', margin: '0 0 4px' }}>
-                  Attendance Confirmed
-                </p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>
-                  We look forward to seeing you!
-                </p>
+                <p style={{ color: '#86EFAC', fontWeight: 700, fontSize: '16px', margin: '0 0 4px' }}>Attendance Confirmed</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>We look forward to seeing you!</p>
               </div>
             )}
 
-            {/* Declined */}
             {rsvpDeclined && (
-              <div style={{ padding: '16px', background: 'rgba(196,75,75,0.15)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(196,75,75,0.3)', marginBottom: '16px' }}>
-                <p style={{ color: '#FCA5A5', fontSize: '14px', margin: 0 }}>
-                  You have declined this invitation. Thank you for letting us know.
-                </p>
+              <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(196,75,75,0.15)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(196,75,75,0.3)' }}>
+                <p style={{ color: '#FCA5A5', fontSize: '14px', margin: 0 }}>Thank you for letting us know. We will miss you!</p>
               </div>
             )}
 
-            {/* Maps link */}
+            {/* Maps */}
             {event.googleMapsUrl && (
-              <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                padding: '11px', borderRadius: '10px',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: '13px',
-                transition: 'background 0.2s',
-              }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-                View Location on Google Maps
+              <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '16px', padding: '11px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontSize: '13px' }}>
+                📍 View on Google Maps
               </a>
             )}
           </div>
-
-          {/* Gold divider bottom */}
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)' }} />
+          <div style={{ height: '3px', background: 'linear-gradient(90deg,transparent,#C9A84C,transparent)' }} />
         </div>
 
-        {/* ── INVITATION VIDEO ── */}
+        {/* Video */}
         {event.invitationVideo?.url && (
-          <div style={{
-            background: 'rgba(255,255,255,0.03)', borderRadius: '16px',
-            overflow: 'hidden', border: '1px solid rgba(201,168,76,0.15)',
-            marginBottom: '16px',
-          }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>
-                Event Preview
-              </p>
-            </div>
+          <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(201,168,76,0.15)', marginBottom: '16px' }}>
             <video controls style={{ width: '100%', display: 'block', background: '#000' }}>
               <source src={event.invitationVideo.url} />
             </video>
           </div>
         )}
 
-        {/* ── DESCRIPTION ── */}
+        {/* Description */}
         {event.description && (
-          <div style={{
-            background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
-            padding: '20px', border: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', lineHeight: 1.8, margin: 0 }}>
-              {event.description}
-            </p>
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '14px', padding: '18px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', lineHeight: 1.8, margin: 0 }}>{event.description}</p>
           </div>
         )}
+
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '32px' }}>Powered by Cardpro</p>
       </div>
     </div>
   );
