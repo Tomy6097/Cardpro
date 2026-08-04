@@ -465,13 +465,15 @@ const GuestList = () => {
         }
       >
         <Input label="Guest Name" name="guestName" value={form.guestName} onChange={e => setForm(p => ({ ...p, guestName: e.target.value }))} required />
-        <Input label="Phone Number" name="phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} required placeholder="0754696878 or 255754696878" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+          <Input label="Phone Number" name="phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} required placeholder="0754696878" />
+          <Select label="Ticket Type" name="ticketType" value={form.ticketType}
+            onChange={e => setForm(p => ({ ...p, ticketType: e.target.value }))}
+            options={ticketOptions}
+          />
+        </div>
         <Input label="Email (optional)" name="email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-        <Select label="Ticket Type" name="ticketType" value={form.ticketType}
-          onChange={e => setForm(p => ({ ...p, ticketType: e.target.value }))}
-          options={ticketOptions}
-        />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
           <Input label="Table Number" name="tableNumber" value={form.tableNumber} onChange={e => setForm(p => ({ ...p, tableNumber: e.target.value }))} />
           <Input label="Notes" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>

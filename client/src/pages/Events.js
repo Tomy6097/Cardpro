@@ -245,19 +245,17 @@ const Events = () => {
         }
       >
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
             <Input label="Event Name" name="name" value={form.name} onChange={handleChange} required />
             <Input label="Client Name" name="clientName" value={form.clientName} onChange={handleChange} required />
             <Input label="Date" name="date" type="date" value={form.date} onChange={handleChange} required />
             <Input label="Time" name="time" type="time" value={form.time} onChange={handleChange} required />
-          </div>
-          <Input label="Venue" name="venue" value={form.venue} onChange={handleChange} required />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <Input label="Dress Code" name="dressCode" value={form.dressCode} onChange={handleChange} placeholder="e.g. Formal Attire" />
             <Input label="Security PIN" name="securityPin" value={form.securityPin} onChange={handleChange} required />
           </div>
+          <Input label="Venue" name="venue" value={form.venue} onChange={handleChange} required />
           <Input label="Google Maps URL" name="googleMapsUrl" value={form.googleMapsUrl} onChange={handleChange} placeholder="https://maps.google.com/..." />
-          <Textarea label="Description" name="description" value={form.description} onChange={handleChange} rows={3} />
+          <Textarea label="Description (optional)" name="description" value={form.description} onChange={handleChange} rows={2} />
           {editId && (
             <Select label="Status" name="status" value={form.status} onChange={handleChange}
               options={[
