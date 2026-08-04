@@ -28,7 +28,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         transform: 'translate(-50%, -50%)',
         zIndex: 1000,
         width: `min(${width}, calc(100vw - 32px))`,
-        maxHeight: 'calc(100vh - 48px)',
+        maxHeight: 'calc(100vh - 32px)',
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--white)',

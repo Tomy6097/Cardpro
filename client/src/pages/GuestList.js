@@ -33,7 +33,7 @@ const CardPreviewModal = ({ guest, onClose }) => {
           transform: 'translate(-50%, -50%)',
           zIndex: 2000,
           width: 'min(460px, calc(100vw - 32px))',
-          maxHeight: 'calc(100vh - 48px)',
+          maxHeight: 'calc(100vh - 32px)',
           background: 'var(--white)',
           borderRadius: 'var(--radius-xl)',
           boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
