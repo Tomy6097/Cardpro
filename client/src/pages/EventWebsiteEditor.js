@@ -352,7 +352,6 @@ const EventWebsiteEditor = () => {
               ))}
             </div>
           </div>
-        </div>
 
           {/* ── VIDEO UPLOAD ── */}
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
