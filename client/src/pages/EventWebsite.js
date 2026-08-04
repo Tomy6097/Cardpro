@@ -233,7 +233,11 @@ const EventWebsite = () => {
             <div style={{padding:'10px 16px',borderBottom:`1px solid ${ac}11`}}>
               <p style={{color:`${ac}55`,fontSize:'11px',textTransform:'uppercase',letterSpacing:'2px',margin:0}}>Event Preview</p>
             </div>
-            <video controls style={{width:'100%',display:'block',background:'#000'}}>
+            <video
+              controls
+              style={{width:'100%',display:'block',background:'#000',maxHeight:'70vh',objectFit:'contain'}}
+              playsInline
+            >
               <source src={event.invitationVideo.url}/>
             </video>
           </div>
