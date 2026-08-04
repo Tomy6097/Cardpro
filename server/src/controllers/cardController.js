@@ -135,8 +135,9 @@ exports.generateCard = asyncHandler(async (req, res) => {
   const result = await uploadToCloudinary(pdfBuffer, {
     folder: `cardpro/events/${event._id}/cards`,
     public_id: `card_${guest._id}`,
-    format: 'pdf',
     resource_type: 'image',
+    format: 'jpg',
+    transformation: [{ quality: 'auto:best', dpr: '2.0' }],
   });
 
   guest.cardUrl = result.secure_url;

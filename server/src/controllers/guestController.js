@@ -138,11 +138,15 @@ const autoGenerateQRAndCard = async (guest, event) => {
       }
 
       const pdfBytes = await pdfDoc.save();
+
+      // Convert PDF to high-quality JPG using Cloudinary transformation
+      // Upload as PDF first, then Cloudinary will serve it as JPG
       const cardResult = await uploadToCloudinary(Buffer.from(pdfBytes), {
         folder: `cardpro/events/${event._id}/cards`,
         public_id: `card_${guest._id}`,
-        format: 'pdf',
         resource_type: 'image',
+        format: 'jpg',
+        transformation: [{ quality: 'auto:best', dpr: '2.0' }],
       });
       guest.cardUrl = cardResult.secure_url;
       guest.cardPublicId = cardResult.public_id;

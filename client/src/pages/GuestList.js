@@ -24,7 +24,7 @@ const CardPreviewModal = ({ guest, onClose }) => {
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
-        background: 'rgba(26,10,0,0.8)', backdropFilter: 'blur(6px)',
+        background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px',
       }}
@@ -33,33 +33,35 @@ const CardPreviewModal = ({ guest, onClose }) => {
       <div
         style={{
           background: 'var(--white)', borderRadius: 'var(--radius-xl)',
-          boxShadow: 'var(--shadow-xl)', overflow: 'hidden',
-          maxWidth: '500px', width: '100%', maxHeight: '90vh',
+          boxShadow: 'var(--shadow-xl)',
+          maxWidth: '480px', width: '100%',
+          maxHeight: '92vh',
           display: 'flex', flexDirection: 'column',
           animation: 'modalIn 0.2s ease',
+          overflow: 'hidden',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
           background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))',
-          padding: '16px 20px',
+          padding: '14px 18px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexShrink: 0,
         }}>
           <div>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '16px', fontWeight: 700, color: 'white', margin: 0 }}>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>
               {guest.guestName}
             </h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', margin: '2px 0 0' }}>
-              {guest.ticketType} Ticket &bull; {guest.phone}
+            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', margin: '2px 0 0' }}>
+              {guest.ticketType} &bull; {guest.phone} &bull; <code style={{ color: 'var(--secondary)', fontWeight: 600 }}>{guest.verificationCode}</code>
             </p>
           </div>
           <button onClick={onClose} style={{
             background: 'rgba(255,255,255,0.15)', border: 'none',
             borderRadius: '8px', width: '32px', height: '32px',
             cursor: 'pointer', color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M18 6L6 18M6 6l12 12"/>
@@ -67,113 +69,82 @@ const CardPreviewModal = ({ guest, onClose }) => {
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-
-          {/* Status badges */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: guest.rsvpStatus === 'confirmed' ? '#D1FAE5' : '#FEF3C7', color: guest.rsvpStatus === 'confirmed' ? '#065F46' : '#92400E' }}>
-              RSVP: {guest.rsvpStatus}
-            </span>
-            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: guest.scanStatus === 'scanned' ? '#D1FAE5' : '#F3F4F6', color: guest.scanStatus === 'scanned' ? '#065F46' : '#374151' }}>
-              Scan: {guest.scanStatus?.replace('_', ' ')}
-            </span>
-            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>
-              Code: {guest.verificationCode}
-            </span>
-          </div>
-
-          {/* QR Code — show as image directly */}
-          {guest.qrCodeUrl ? (
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', fontWeight: 600 }}>
+        {/* Card Image — fills available space, no scroll needed */}
+        <div style={{ flex: 1, overflowY: 'auto', background: '#1a0a00' }}>
+          {guest.cardUrl ? (
+            <img
+              src={guest.cardUrl}
+              alt={`Card for ${guest.guestName}`}
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                objectFit: 'contain',
+              }}
+            />
+          ) : guest.qrCodeUrl ? (
+            /* No card yet — show QR only */
+            <div style={{ padding: '32px', textAlign: 'center' }}>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
                 QR Code
               </p>
               <div style={{
                 display: 'inline-block', background: 'white',
                 padding: '16px', borderRadius: '16px',
-                boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
               }}>
-                <img
-                  src={guest.qrCodeUrl}
-                  alt="QR Code"
-                  style={{ width: '180px', height: '180px', display: 'block' }}
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-                <p style={{
-                  margin: '8px 0 0', fontSize: '13px', fontWeight: 800,
-                  color: 'var(--primary-dark)', letterSpacing: '3px', textAlign: 'center',
-                }}>
+                <img src={guest.qrCodeUrl} alt="QR" style={{ width: '200px', height: '200px', display: 'block' }} />
+                <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 800, color: '#1A0A00', letterSpacing: '3px', textAlign: 'center' }}>
                   {guest.ticketType?.toUpperCase()}
                 </p>
               </div>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginTop: '16px' }}>
+                Card image is being generated...
+              </p>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '20px', background: '#FEF9C3', borderRadius: 'var(--radius)', marginBottom: '20px' }}>
-              <p style={{ color: '#854D0E', fontSize: '13px', margin: 0 }}>
-                ⟳ QR code is being generated... Refresh in a few seconds.
-              </p>
+            <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+              <p>QR code is being generated...</p>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>Refresh in a few seconds.</p>
             </div>
           )}
-
-          {/* Card PDF — show as image if possible, otherwise download link */}
-          {guest.cardUrl ? (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', fontWeight: 600 }}>
-                Invitation Card
-              </p>
-              {/* Show PDF as image via cloudinary transformation */}
-              <div style={{
-                border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-                overflow: 'hidden', marginBottom: '14px',
-                background: 'var(--cream)',
-              }}>
-                <img
-                  src={guest.cardUrl.replace('/upload/', '/upload/f_jpg,pg_1,w_400/')}
-                  alt="Invitation Card"
-                  style={{ width: '100%', display: 'block' }}
-                  onError={(e) => {
-                    // If image conversion fails, show PDF icon
-                    e.target.parentElement.innerHTML = `
-                      <div style="padding:40px;text-align:center;color:#6B5B45">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        <p style="margin:8px 0 0;font-size:13px">Card PDF ready</p>
-                      </div>`;
-                  }}
-                />
-              </div>
-              <a
-                href={guest.cardUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  padding: '10px 24px', background: 'var(--primary)', color: 'white',
-                  borderRadius: 'var(--radius)', fontSize: '14px', fontWeight: 600,
-                  textDecoration: 'none', fontFamily: 'Inter',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                </svg>
-                Download Full Card (PDF)
-              </a>
-            </div>
-          ) : guest.qrCodeUrl ? (
-            <div style={{ textAlign: 'center', padding: '16px', background: 'var(--cream-dark)', borderRadius: 'var(--radius)' }}>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-                Card PDF not yet generated. Upload a card template first.
-              </p>
-            </div>
-          ) : null}
         </div>
+
+        {/* Footer — download button */}
+        {guest.cardUrl && (
+          <div style={{
+            padding: '14px 18px', borderTop: '1px solid var(--border-light)',
+            display: 'flex', gap: '10px', justifyContent: 'center',
+            flexShrink: 0, background: 'var(--white)',
+          }}>
+            <a
+              href={guest.cardUrl}
+              download={`${guest.guestName.replace(/\s+/g, '_')}_card.jpg`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '9px 22px', background: 'var(--primary)', color: 'white',
+                borderRadius: 'var(--radius)', fontSize: '13px', fontWeight: 600,
+                textDecoration: 'none', fontFamily: 'Inter',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              Download JPG
+            </a>
+            <button onClick={onClose} style={{
+              padding: '9px 18px', background: 'var(--cream-dark)',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+              fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter', color: 'var(--text-secondary)',
+            }}>
+              Close
+            </button>
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+          from { opacity: 0; transform: scale(0.96) translateY(-8px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
