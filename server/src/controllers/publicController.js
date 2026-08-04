@@ -16,7 +16,12 @@ exports.getEventPublic = asyncHandler(async (req, res) => {
   res.json({ success: true, event });
 });
 
-// Get guest invitation page data
+// Public settings (company branding only)
+exports.getPublicSettings = asyncHandler(async (req, res) => {
+  const Settings = require('../models/Settings');
+  const settings = await Settings.findOne().select('companyName logo');
+  res.json({ success: true, settings: settings || { companyName: 'Cardpro', logo: null } });
+});
 exports.getGuestInvitation = asyncHandler(async (req, res) => {
   const { slug } = req.params;
   const { code } = req.query;

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { settingsAPI } from '../api';
 import toast from 'react-hot-toast';
 
 const NavItem = ({ to, icon: Icon, label, collapsed }) => (
@@ -49,6 +50,15 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState(null);
+  const [companyName, setCompanyName] = useState('Cardpro');
+
+  useEffect(() => {
+    settingsAPI.get().then(r => {
+      if (r.data?.settings?.logo?.url) setCompanyLogo(r.data.settings.logo.url);
+      if (r.data?.settings?.companyName) setCompanyName(r.data.settings.companyName);
+    }).catch(() => {});
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -79,37 +89,56 @@ const DashboardLayout = () => {
       }}>
         {/* Logo */}
         <div style={{
-          padding: collapsed ? '20px 0' : '24px 20px',
+          padding: collapsed ? '20px 0' : '20px 16px',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
           gap: '12px',
         }}>
           {!collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              {companyLogo ? (
+                <img
+                  src={companyLogo}
+                  alt={companyName}
+                  style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+                />
+              ) : (
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px',
+                  background: 'var(--secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'Poppins', fontSize: '18px', fontWeight: 800, color: 'var(--white)', flexShrink: 0,
+                }}>
+                  {companyName?.[0]?.toUpperCase() || 'C'}
+                </div>
+              )}
+              <span style={{
+                fontFamily: 'Poppins', fontSize: '17px', fontWeight: 700,
+                color: 'var(--white)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {companyName}
+              </span>
+            </div>
+          )}
+          {collapsed && (
+            companyLogo ? (
+              <img src={companyLogo} alt={companyName} style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover' }} />
+            ) : (
               <div style={{
                 width: '36px', height: '36px', borderRadius: '10px',
                 background: 'var(--secondary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'Poppins', fontSize: '18px', fontWeight: 800, color: 'var(--white)',
-              }}>C</div>
-              <span style={{ fontFamily: 'Poppins', fontSize: '18px', fontWeight: 700, color: 'var(--white)' }}>
-                Cardpro
-              </span>
-            </div>
-          )}
-          {collapsed && (
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '10px',
-              background: 'var(--secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Poppins', fontSize: '18px', fontWeight: 800, color: 'var(--white)',
-            }}>C</div>
+              }}>
+                {companyName?.[0]?.toUpperCase() || 'C'}
+              </div>
+            )
           )}
           {!collapsed && (
             <button onClick={() => setCollapsed(true)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'rgba(255,255,255,0.5)', padding: '4px',
+              color: 'rgba(255,255,255,0.5)', padding: '4px', flexShrink: 0,
             }}>
               <Icon name="ChevronLeft" size={18} />
             </button>

@@ -14,6 +14,15 @@ const EventWebsite = () => {
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpDeclined, setRsvpDeclined] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    // Fetch settings for company logo/name
+    fetch(`${API}/settings`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.settings) setSettings(d.settings); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const url = code ? `${API}/public/event/${slug}/invitation?code=${code}` : `${API}/public/event/${slug}`;
@@ -126,7 +135,19 @@ const EventWebsite = () => {
       {/* ── CONTENT ── */}
       <div style={{maxWidth:'680px',margin:'0 auto',padding:`${photos.length>0?'0':'32px'} 20px 60px`}}>
         {/* Branding */}
-        <p style={{textAlign:'center',fontSize:'11px',letterSpacing:'3px',color:pc+'80',textTransform:'uppercase',margin:'28px 0 24px'}}>Cardpro Invitation</p>
+        <div style={{textAlign:'center',margin:'28px 0 24px'}}>
+          {settings?.logo?.url ? (
+            <img
+              src={settings.logo.url}
+              alt={settings.companyName || 'Cardpro'}
+              style={{height:'40px',width:'auto',objectFit:'contain',display:'inline-block',filter:'brightness(0) invert(1)',opacity:0.7}}
+            />
+          ) : (
+            <p style={{fontSize:'11px',letterSpacing:'3px',color:pc+'80',textTransform:'uppercase',margin:0,fontFamily:ff}}>
+              {settings?.companyName || 'Cardpro'} Invitation
+            </p>
+          )}
+        </div>
 
         {/* Guest Card */}
         {guest?.cardUrl&&(
@@ -284,7 +305,9 @@ const EventWebsite = () => {
           </div>
         )}
 
-        <p style={{textAlign:'center',color:`${ac}33`,fontSize:'11px',marginTop:'32px'}}>Powered by Cardpro</p>
+        <p style={{textAlign:'center',color:`${ac}33`,fontSize:'11px',marginTop:'32px'}}>
+          Powered by {settings?.companyName || 'Cardpro'}
+        </p>
       </div>
     </div>
   );
