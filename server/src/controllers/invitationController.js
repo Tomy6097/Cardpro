@@ -13,7 +13,7 @@ const formatDate = (date) => {
 };
 
 const buildConfirmUrl = (eventSlug, guestVerificationCode) => {
-  const baseUrl = process.env.CLIENT_URL || '';
+  const baseUrl = process.env.CLIENT_URL || 'https://cardpro-app.onrender.com';
   return `${baseUrl}/event/${eventSlug}?code=${guestVerificationCode}`;
 };
 
