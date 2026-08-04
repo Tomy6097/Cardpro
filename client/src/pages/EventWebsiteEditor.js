@@ -16,6 +16,7 @@ const EventWebsiteEditor = () => {
   const qc = useQueryClient();
   const dressRef = useRef();
   const photoRef = useRef();
+  const videoRef = useRef();
 
   const [theme, setTheme] = useState({
     primaryColor: '#C9A84C',
@@ -26,6 +27,7 @@ const EventWebsiteEditor = () => {
   const [dressCaption, setDressCaption] = useState('');
   const [dressGender, setDressGender] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const { data: eventData, isLoading } = useQuery({
     queryKey: ['event', eventId],
@@ -67,6 +69,31 @@ const EventWebsiteEditor = () => {
     onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Photo removed.'); },
     onError: (err) => toast.error(err.message),
   });
+
+  const uploadVideoMutation = useMutation({
+    mutationFn: (fd) => eventsAPI.uploadVideo(eventId, fd),
+    onSuccess: () => {
+      qc.invalidateQueries(['event', eventId]);
+      toast.success('Video uploaded successfully!');
+      setUploadProgress(null);
+    },
+    onError: (err) => { toast.error(err.message); setUploadProgress(null); },
+  });
+
+  const handleVideoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Check file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Video too large. Maximum 50MB allowed.');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('video', file);
+    setUploadProgress('Uploading...');
+    uploadVideoMutation.mutate(fd);
+    e.target.value = '';
+  };
 
   const handleDressUpload = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -278,8 +305,7 @@ const EventWebsiteEditor = () => {
           </div>
 
           {/* Event Photos */}
-          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               Event Photos
             </h3>
@@ -325,6 +351,76 @@ const EventWebsiteEditor = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+          {/* ── VIDEO UPLOAD ── */}
+          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>
+              Invitation Video
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 14px' }}>
+              Upload a short video (max 50MB) shown on the guest website
+            </p>
+
+            {/* Current video preview */}
+            {ev?.invitationVideo?.url && (
+              <div style={{ marginBottom: '14px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', background: '#000' }}>
+                <video controls style={{ width: '100%', maxHeight: '180px', display: 'block' }}>
+                  <source src={ev.invitationVideo.url} />
+                </video>
+                <div style={{ padding: '8px 12px', background: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Current video</span>
+                  <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 600 }}>✓ Active</span>
+                </div>
+              </div>
+            )}
+
+            {/* Upload area */}
+            <div
+              onClick={() => videoRef.current?.click()}
+              style={{
+                border: `2px dashed ${uploadVideoMutation.isPending ? 'var(--primary)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius)',
+                padding: '24px',
+                textAlign: 'center',
+                cursor: uploadVideoMutation.isPending ? 'not-allowed' : 'pointer',
+                background: uploadVideoMutation.isPending ? 'var(--cream)' : 'var(--cream-dark)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {uploadVideoMutation.isPending ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '8px' }}>
+                    {[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', animation: `dot 1.2s ${i*.2}s ease-in-out infinite` }}/>)}
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'var(--primary)', margin: 0, fontWeight: 500 }}>Uploading video...</p>
+                  <style>{`@keyframes dot{0%,80%,100%{opacity:.3;transform:scale(1)}40%{opacity:1;transform:scale(1.3)}}`}</style>
+                </div>
+              ) : (
+                <>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" style={{ marginBottom: '8px' }}>
+                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+                  </svg>
+                  <p style={{ fontSize: '13px', color: 'var(--text-primary)', margin: '0 0 4px', fontWeight: 500 }}>
+                    {ev?.invitationVideo?.url ? 'Replace Video' : 'Upload Video'}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+                    MP4, MOV, AVI — Max 50MB
+                  </p>
+                </>
+              )}
+            </div>
+            <input
+              ref={videoRef}
+              type="file"
+              accept=".mp4,.mov,.avi,.webm"
+              onChange={handleVideoUpload}
+              style={{ display: 'none' }}
+            />
           </div>
         </div>
       </div>
