@@ -424,6 +424,8 @@ const EventWebsiteEditor = () => {
         </div>
       </div>
     </div>
+    </div>
+    </div>
   );
 };
 
