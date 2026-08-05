@@ -1,17 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+const API = process.env.REACT_APP_API_URL || '/api';
+
 const ScannerLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/public/settings`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.settings) setSettings(d.settings); })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     toast.success('Logged out.');
     navigate('/login');
   };
+
+  const logoUrl = settings?.logo?.url;
+  const companyName = settings?.companyName || 'Cardpro';
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--primary-dark)', display: 'flex', flexDirection: 'column' }}>
@@ -23,14 +36,15 @@ const ScannerLayout = () => {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '10px',
-            background: 'var(--secondary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Poppins', fontSize: '18px', fontWeight: 800, color: 'var(--white)',
-          }}>C</div>
+          {logoUrl ? (
+            <img src={logoUrl} alt={companyName} style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Poppins', fontSize: '18px', fontWeight: 800, color: 'var(--white)' }}>
+              {companyName[0]?.toUpperCase()}
+            </div>
+          )}
           <div>
-            <p style={{ fontFamily: 'Poppins', fontSize: '16px', fontWeight: 700, color: 'var(--white)', margin: 0 }}>Cardpro</p>
+            <p style={{ fontFamily: 'Poppins', fontSize: '16px', fontWeight: 700, color: 'var(--white)', margin: 0 }}>{companyName}</p>
             <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>Scanner Portal</p>
           </div>
         </div>

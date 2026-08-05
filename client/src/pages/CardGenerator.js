@@ -59,7 +59,7 @@ const CardGenerator = () => {
 
   const generateAllMutation = useMutation({
     mutationFn: () => cardsAPI.generateAll(eventId),
-    onSuccess: (r) => { toast.success(`${r.data.generated} cards generated.`); qc.invalidateQueries(['guests', eventId]); },
+    onSuccess: (r) => { toast.success(`${r.data.generated} cards regenerated with current settings.`); qc.invalidateQueries(['guests', eventId]); },
     onError: (err) => toast.error(err.message),
   });
 

@@ -117,7 +117,7 @@ const Scanner = () => {
           doScan(code.data.trim());
         }
       } catch {}
-    }, 250); // scan 4 times per second
+    }, 100); // scan 10 times per second for faster response
   }, [doScan]);
 
   const stopScanLoop = () => {
