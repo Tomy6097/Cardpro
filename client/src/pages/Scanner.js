@@ -120,32 +120,61 @@ const Scanner = () => {
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
       setIsScanning(true);
 
-      const { BrowserQRCodeReader } = await import('@zxing/library').catch(() => ({ BrowserQRCodeReader: null }));
-      if (BrowserQRCodeReader) {
-        const reader = new BrowserQRCodeReader();
-        readerRef.current = reader;
-        reader.decodeFromStream(stream, videoRef.current, (result, err) => {
-          if (result && !scanning) {
-            // ZXing can return result.text or result.getText()
-            const rawText = typeof result.getText === 'function'
-              ? result.getText()
-              : (result.text || result.toString());
-            console.log('QR Scanned:', rawText?.substring(0, 50));
-            if (rawText && rawText.length > 5) {
-              doScan(rawText.trim());
-            }
+      // Use canvas-based QR scanning (jsQR) instead of ZXing
+      const jsQR = (await import('jsqr').catch(() => null))?.default;
+
+      if (jsQR) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const scan = () => {
+          if (!streamRef.current) return;
+          const video = videoRef.current;
+          if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+            requestAnimationFrame(scan);
+            return;
           }
-        });
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+          if (code && code.data && !scanning) {
+            console.log('QR Scanned:', code.data?.substring(0, 50));
+            doScan(code.data.trim());
+          }
+          requestAnimationFrame(scan);
+        };
+        requestAnimationFrame(scan);
       } else {
-        // Fallback: use canvas to capture frames and decode manually
-        toast.error('QR library not available. Use manual code entry.');
+        // Fallback to ZXing
+        const { BrowserQRCodeReader } = await import('@zxing/library').catch(() => ({ BrowserQRCodeReader: null }));
+        if (BrowserQRCodeReader) {
+          const reader = new BrowserQRCodeReader();
+          readerRef.current = reader;
+          reader.decodeFromStream(stream, videoRef.current, (result, err) => {
+            if (result && !scanning) {
+              const rawText = typeof result.getText === 'function' ? result.getText() : (result.text || result.toString());
+              if (rawText?.length > 5) doScan(rawText.trim());
+            }
+          });
+        }
       }
-    } catch { toast.error('Camera access denied.'); }
+    } catch (err) {
+      toast.error('Camera access denied. Use manual entry.');
+    }
   }, [doScan, scanning]);
 
   useEffect(() => { return () => stopCamera(); }, [stopCamera]);
@@ -309,7 +338,7 @@ const Scanner = () => {
               }}>
                 {isScanning ? (
                   <>
-                    <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     {/* Scan overlay */}
                     <div style={{ position: 'absolute', inset: '15%', border: '2px solid var(--secondary)', borderRadius: '8px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
                     {scanning && <div style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center' }}>
