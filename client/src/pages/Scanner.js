@@ -124,55 +124,56 @@ const Scanner = () => {
         video: { facingMode: 'environment' }
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+
+      // Wait for video to be ready before processing
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play().then(resolve).catch(resolve);
+          };
+          // Timeout fallback
+          setTimeout(resolve, 2000);
+        });
       }
+
       setIsScanning(true);
 
-      // Use canvas-based QR scanning (jsQR) instead of ZXing
+      // Canvas-based QR scanning with jsQR
       const jsQR = (await import('jsqr').catch(() => null))?.default;
 
-      if (jsQR) {
+      if (jsQR && video) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+        let animFrame;
 
         const scan = () => {
-          if (!streamRef.current) return;
-          const video = videoRef.current;
-          if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
-            requestAnimationFrame(scan);
-            return;
+          if (!streamRef.current || !video) return;
+
+          if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            try {
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const code = jsQR(imageData.data, imageData.width, imageData.height);
+              if (code && code.data && !scanning) {
+                console.log('QR:', code.data.substring(0, 60));
+                doScan(code.data.trim());
+              }
+            } catch {}
           }
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          });
-          if (code && code.data && !scanning) {
-            console.log('QR Scanned:', code.data?.substring(0, 50));
-            doScan(code.data.trim());
-          }
-          requestAnimationFrame(scan);
+          animFrame = requestAnimationFrame(scan);
         };
-        requestAnimationFrame(scan);
-      } else {
-        // Fallback to ZXing
-        const { BrowserQRCodeReader } = await import('@zxing/library').catch(() => ({ BrowserQRCodeReader: null }));
-        if (BrowserQRCodeReader) {
-          const reader = new BrowserQRCodeReader();
-          readerRef.current = reader;
-          reader.decodeFromStream(stream, videoRef.current, (result, err) => {
-            if (result && !scanning) {
-              const rawText = typeof result.getText === 'function' ? result.getText() : (result.text || result.toString());
-              if (rawText?.length > 5) doScan(rawText.trim());
-            }
-          });
-        }
+
+        animFrame = requestAnimationFrame(scan);
+        // Store cancel function
+        readerRef.current = { reset: () => cancelAnimationFrame(animFrame) };
       }
     } catch (err) {
+      console.error('Camera error:', err);
       toast.error('Camera access denied. Use manual entry.');
     }
   }, [doScan, scanning]);
@@ -328,40 +329,77 @@ const Scanner = () => {
           {/* ── CAMERA MODE ── */}
           {mode === 'camera' && (
             <div>
+              {/* Camera view */}
               <div style={{
-                background: isScanning ? '#000' : 'var(--primary-dark)',
-                borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-                aspectRatio: '1', maxHeight: '320px',
+                background: '#000',
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+                width: '100%',
+                aspectRatio: '4/3',
+                maxHeight: '340px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative', marginBottom: '12px',
-                border: isScanning ? '3px solid var(--secondary)' : '3px solid transparent',
+                position: 'relative',
+                marginBottom: '12px',
+                border: isScanning ? '3px solid var(--secondary)' : '3px solid var(--border)',
+                boxSizing: 'border-box',
               }}>
                 {isScanning ? (
                   <>
-                    <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    {/* Scan overlay */}
-                    <div style={{ position: 'absolute', inset: '15%', border: '2px solid var(--secondary)', borderRadius: '8px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
-                    {scanning && <div style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center' }}>
-                      <span style={{ background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '12px', padding: '4px 12px', borderRadius: '20px' }}>Processing...</span>
-                    </div>}
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    {/* Scan guide overlay */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '55%', aspectRatio: '1',
+                      border: '2px solid var(--secondary)',
+                      borderRadius: '8px',
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)',
+                      zIndex: 2,
+                    }} />
+                    {scanning && (
+                      <div style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center', zIndex: 3 }}>
+                        <span style={{ background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '12px', padding: '4px 12px', borderRadius: '20px' }}>
+                          Processing...
+                        </span>
+                      </div>
+                    )}
                   </>
                 ) : (
-                  <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                  <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '20px' }}>
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '12px' }}>
                       <path d="M23 7V3a2 2 0 00-2-2h-4M23 17v4a2 2 0 01-2 2h-4M1 7V3a2 2 0 012-2h4M1 17v4a2 2 0 002 2h4"/>
                       <rect x="7" y="7" width="10" height="10" rx="1"/>
                     </svg>
-                    <p style={{ fontSize: '13px', margin: 0 }}>Tap to start camera</p>
+                    <p style={{ fontSize: '13px', margin: 0 }}>Tap button to start camera</p>
                   </div>
                 )}
               </div>
-              <button onClick={isScanning ? stopCamera : startCamera} style={{
-                width: '100%', padding: '14px',
-                background: isScanning ? 'var(--danger)' : 'var(--primary)',
-                color: 'white', border: 'none', borderRadius: 'var(--radius)',
-                fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'Poppins', boxShadow: 'var(--shadow-md)',
-              }}>
+
+              {/* Start/Stop button — full width */}
+              <button
+                onClick={isScanning ? stopCamera : startCamera}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: isScanning ? '#7F1D1D' : 'var(--primary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--radius)',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'Poppins',
+                  display: 'block',
+                  boxSizing: 'border-box',
+                }}
+              >
                 {isScanning ? 'Stop Camera' : 'Start Camera Scan'}
               </button>
             </div>
