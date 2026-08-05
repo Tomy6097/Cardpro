@@ -143,7 +143,9 @@ const CardPreviewModal = ({ guest, onClose }) => {
             }}>
               Close
             </button>
-      </div>
+          </div>
+        </div>
+        </div>
       </div>
       <style>{`
         @keyframes cardModalIn {
