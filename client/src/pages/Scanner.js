@@ -131,11 +131,19 @@ const Scanner = () => {
         readerRef.current = reader;
         reader.decodeFromStream(stream, videoRef.current, (result, err) => {
           if (result && !scanning) {
-            const rawText = result.getText ? result.getText() : result.text;
-            console.log('QR Scanned raw:', rawText);
-            doScan(rawText);
+            // ZXing can return result.text or result.getText()
+            const rawText = typeof result.getText === 'function'
+              ? result.getText()
+              : (result.text || result.toString());
+            console.log('QR Scanned:', rawText?.substring(0, 50));
+            if (rawText && rawText.length > 5) {
+              doScan(rawText.trim());
+            }
           }
         });
+      } else {
+        // Fallback: use canvas to capture frames and decode manually
+        toast.error('QR library not available. Use manual code entry.');
       }
     } catch { toast.error('Camera access denied.'); }
   }, [doScan, scanning]);
