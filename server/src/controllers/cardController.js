@@ -17,7 +17,10 @@ const hexToRgb = (hex) => {
 };
 
 const fetchBuffer = async (url) => {
-  const response = await axios.get(url, { responseType: 'arraybuffer' });
+  const response = await axios.get(url, {
+    responseType: 'arraybuffer',
+    timeout: 30000,
+  });
   return Buffer.from(response.data);
 };
 
@@ -188,15 +191,19 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
       const namePctY = (config.guestNamePosition?.y || 85) / 100;
       const nameX = config.guestNameAlign === 'center'
         ? (width * namePctX) - (nameWidth / 2)
-        : width * namePctX;
+        : config.guestNameAlign === 'right'
+          ? (width * namePctX) - nameWidth
+          : width * namePctX;
+      const nameY = height * (1 - namePctY);
 
-      page.drawText(guest.guestName, {
-        x: nameX,
-        y: height * (1 - namePctY),
-        size: fontSize,
-        font,
-        color: rgb(nameColor.r, nameColor.g, nameColor.b),
-      });
+      // Shadow/outline
+      const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
+        ? { r: 0, g: 0, b: 0 } : { r: 1, g: 1, b: 1 };
+      const offsets = [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]];
+      for (const [ox, oy] of offsets) {
+        page.drawText(guest.guestName, { x: nameX+ox, y: nameY+oy, size: fontSize, font, color: rgb(shadowColor.r, shadowColor.g, shadowColor.b), opacity: 0.6 });
+      }
+      page.drawText(guest.guestName, { x: nameX, y: nameY, size: fontSize, font, color: rgb(nameColor.r, nameColor.g, nameColor.b), opacity: 1 });
 
       if (config.showQR !== false && guest.qrToken) {
         const qrSize = config.qrSize || 150;
@@ -215,8 +222,9 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
       const result = await uploadToCloudinary(Buffer.from(pdfBytes), {
         folder: `cardpro/events/${eventId}/cards`,
         public_id: `card_${guest._id}`,
-        format: 'pdf',
+        format: 'jpg',
         resource_type: 'image',
+        transformation: [{ quality: 'auto:best', dpr: '2.0' }],
       });
 
       guest.cardUrl = result.secure_url;
