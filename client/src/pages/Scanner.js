@@ -131,7 +131,9 @@ const Scanner = () => {
         readerRef.current = reader;
         reader.decodeFromStream(stream, videoRef.current, (result, err) => {
           if (result && !scanning) {
-            doScan(result.text);
+            const rawText = result.getText ? result.getText() : result.text;
+            console.log('QR Scanned raw:', rawText);
+            doScan(rawText);
           }
         });
       }

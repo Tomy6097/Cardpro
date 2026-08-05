@@ -19,8 +19,27 @@ exports.scanQR = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Not authorized for this event.' });
   }
 
-  // Find guest by qrToken
-  const guest = await Guest.findOne({ qrToken: token, event: eventId, isDeleted: false });
+  // Find guest by qrToken OR verificationCode (flexible matching)
+  let guest = await Guest.findOne({ qrToken: token, event: eventId, isDeleted: false });
+
+  // If not found by qrToken, try verificationCode
+  if (!guest) {
+    guest = await Guest.findOne({
+      verificationCode: token.toUpperCase(),
+      event: eventId,
+      isDeleted: false,
+    });
+  }
+
+  // If still not found, try partial token match (in case of URL encoding)
+  if (!guest) {
+    const tokenPart = token.split('.')[0]; // get base64 part before signature
+    if (tokenPart && tokenPart.length > 10) {
+      const allGuests = await Guest.find({ event: eventId, isDeleted: false }).select('qrToken guestName');
+      guest = allGuests.find(g => g.qrToken && (g.qrToken === token || g.qrToken.startsWith(tokenPart)));
+      if (guest) guest = await Guest.findById(guest._id);
+    }
+  }
 
   if (!guest) {
     // Try to verify the token structure
@@ -38,6 +57,7 @@ exports.scanQR = asyncHandler(async (req, res) => {
         success: false,
         status: 'invalid',
         message: 'Invalid QR Code. This code does not belong to this event.',
+        debug: process.env.NODE_ENV !== 'production' ? { tokenReceived: token?.substring(0, 30) + '...' } : undefined,
       });
     }
 
