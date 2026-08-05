@@ -21,142 +21,95 @@ const emptyForm = { guestName: '', phone: '', email: '', ticketType: 'Single', t
 const CardPreviewModal = ({ guest, onClose }) => {
   if (!guest) return null;
 
-  const content = (
+  return ReactDOM.createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }} />
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', pointerEvents: 'none' }}>
-        <div
-          style={{ width: 'min(460px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'cardModalIn 0.2s ease', pointerEvents: 'all' }}
-          onClick={e => e.stopPropagation()}
-        >
-        {/* Header */}
-        <div style={{
-          background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))',
-          padding: '14px 18px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexShrink: 0,
-        }}>
-          <div>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>
-              {guest.guestName}
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', margin: '2px 0 0' }}>
-              {guest.ticketType} &bull; {guest.phone} &bull; <code style={{ color: 'var(--secondary)', fontWeight: 600 }}>{guest.verificationCode}</code>
-            </p>
-          </div>
-          <button onClick={onClose} style={{
-            background: 'rgba(255,255,255,0.15)', border: 'none',
-            borderRadius: '8px', width: '32px', height: '32px',
-            cursor: 'pointer', color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }}
+      />
 
-        {/* Card Image */}
-        <div style={{ background: '#1a0a00', flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
-          {guest.cardUrl ? (
-            <img
-              src={guest.cardUrl}
-              alt={`Card for ${guest.guestName}`}
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
-              onError={(e) => {
-                // If image fails, try Cloudinary JPG conversion
-                const url = guest.cardUrl;
-                if (url.includes('/upload/') && !url.includes('f_jpg')) {
-                  e.target.src = url.replace('/upload/', '/upload/f_jpg,q_auto/');
-                } else {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = `
-                    <div style="padding:32px;text-align:center;color:rgba(255,255,255,0.5)">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style="margin-bottom:12px">
-                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                      </svg>
-                      <p style="font-size:13px;margin:0">Card not ready yet. Regenerate the card.</p>
-                    </div>`;
-                }
-              }}
-            />
-          ) : guest.qrCodeUrl ? (
-            <div style={{ padding: '32px', textAlign: 'center' }}>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>QR Code</p>
-              <div style={{ display: 'inline-block', background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-                <img src={guest.qrCodeUrl} alt="QR" style={{ width: '200px', height: '200px', display: 'block' }} />
-                <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 800, color: '#1A0A00', letterSpacing: '3px', textAlign: 'center' }}>
-                  {guest.ticketType?.toUpperCase()}
-                </p>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginTop: '16px' }}>
-                Card image is being generated...
+      {/* Centered container */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', pointerEvents: 'none' }}>
+
+        {/* Modal box */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ width: 'min(460px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden', pointerEvents: 'all' }}
+        >
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div>
+              <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>{guest.guestName}</h3>
+              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', margin: '2px 0 0' }}>
+                {guest.ticketType} &bull; {guest.phone} &bull; <code style={{ color: 'var(--secondary)', fontWeight: 600 }}>{guest.verificationCode}</code>
               </p>
             </div>
-          ) : (
-            <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
-              <p>QR code is being generated...</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer — download button */}
-        {guest.cardUrl && (
-          <div style={{
-            padding: '14px 18px', borderTop: '1px solid var(--border-light)',
-            display: 'flex', gap: '10px', justifyContent: 'center',
-            flexShrink: 0, background: 'var(--white)',
-          }}>
-            <button
-              onClick={async () => {
-                try {
-                  const response = await fetch(guest.cardUrl);
-                  const blob = await response.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${guest.guestName.replace(/\s+/g, '_')}_card.jpg`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                } catch {
-                  window.open(guest.cardUrl, '_blank');
-                }
-              }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                padding: '9px 22px', background: 'var(--primary)', color: 'white',
-                borderRadius: 'var(--radius)', fontSize: '13px', fontWeight: 600,
-                border: 'none', cursor: 'pointer', fontFamily: 'Inter',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-              </svg>
-              Download JPG
-            </button>
-            <button onClick={onClose} style={{
-              padding: '9px 18px', background: 'var(--cream-dark)',
-              border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-              fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter', color: 'var(--text-secondary)',
-            }}>
-              Close
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-        </div>
+
+          {/* Card Image */}
+          <div style={{ background: '#1a0a00', flex: 1, overflowY: 'auto' }}>
+            {guest.cardUrl ? (
+              <img
+                src={guest.cardUrl}
+                alt={guest.guestName}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                onError={e => {
+                  const url = guest.cardUrl;
+                  if (url.includes('/upload/') && !url.includes('f_jpg')) {
+                    e.target.src = url.replace('/upload/', '/upload/f_jpg,q_auto/');
+                  } else {
+                    e.target.style.display = 'none';
+                  }
+                }}
+              />
+            ) : guest.qrCodeUrl ? (
+              <div style={{ padding: '32px', textAlign: 'center' }}>
+                <div style={{ display: 'inline-block', background: 'white', padding: '16px', borderRadius: '16px' }}>
+                  <img src={guest.qrCodeUrl} alt="QR" style={{ width: '180px', height: '180px', display: 'block' }} />
+                  <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 800, color: '#1A0A00', letterSpacing: '2px', textAlign: 'center' }}>{guest.ticketType?.toUpperCase()}</p>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginTop: '12px' }}>Card is being generated...</p>
+              </div>
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>QR code is being generated...</div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {guest.cardUrl && (
+            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '10px', justifyContent: 'center', flexShrink: 0, background: 'var(--white)' }}>
+              <button
+                onClick={async () => {
+                  try {
+                    const r = await fetch(guest.cardUrl);
+                    const blob = await r.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = `${guest.guestName.replace(/\s+/g,'_')}_card.jpg`;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch { window.open(guest.cardUrl, '_blank'); }
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 22px', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius)', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Download JPG
+              </button>
+              <button onClick={onClose} style={{ padding: '9px 16px', background: 'var(--cream-dark)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '13px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                Close
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
-      <style>{`
-        @keyframes cardModalIn {
-          from { opacity: 0; transform: scale(0.97); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
-    </>
+    </>,
+    document.body
   );
-
-  return ReactDOM.createPortal(content, document.body);
 };
 
 const GuestList = () => {
