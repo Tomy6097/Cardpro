@@ -51,6 +51,18 @@ const Scanner = () => {
   const readerRef = useRef(null);
   const manualRef = useRef(null);
   const searchRef = useRef(null);
+  const scanningRef = useRef(false); // use ref instead of state for scan lock
+
+  // When stream starts, attach to video element
+  useEffect(() => {
+    if (streamRef.current && videoRef.current && isScanning) {
+      const video = videoRef.current;
+      if (video.srcObject !== streamRef.current) {
+        video.srcObject = streamRef.current;
+        video.play().catch(() => {});
+      }
+    }
+  }, [isScanning]);
 
   const { data: eventsData } = useQuery({
     queryKey: ['scanner-events'],
@@ -124,59 +136,53 @@ const Scanner = () => {
         video: { facingMode: 'environment' }
       });
       streamRef.current = stream;
+      setIsScanning(true); // triggers useEffect to attach stream to video
 
-      // Wait for video to be ready before processing
+      // Wait a moment for React to render video element with stream
+      await new Promise(r => setTimeout(r, 300));
+
       const video = videoRef.current;
-      if (video) {
+      if (video && !video.srcObject) {
         video.srcObject = stream;
-        await new Promise((resolve) => {
-          video.onloadedmetadata = () => {
-            video.play().then(resolve).catch(resolve);
-          };
-          // Timeout fallback
-          setTimeout(resolve, 2000);
-        });
+        await video.play().catch(() => {});
       }
-
-      setIsScanning(true);
 
       // Canvas-based QR scanning with jsQR
       const jsQR = (await import('jsqr').catch(() => null))?.default;
+      if (!jsQR || !video) return;
 
-      if (jsQR && video) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        let animFrame;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      let animId;
+      scanningRef.current = false;
 
-        const scan = () => {
-          if (!streamRef.current || !video) return;
+      const scan = () => {
+        if (!streamRef.current) return;
+        if (video.readyState >= 2 && video.videoWidth > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          try {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code?.data && !scanningRef.current) {
+              console.log('QR detected:', code.data.substring(0, 60));
+              scanningRef.current = true;
+              doScan(code.data.trim());
+              setTimeout(() => { scanningRef.current = false; }, 3000);
+            }
+          } catch {}
+        }
+        animId = requestAnimationFrame(scan);
+      };
 
-          if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            try {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const code = jsQR(imageData.data, imageData.width, imageData.height);
-              if (code && code.data && !scanning) {
-                console.log('QR:', code.data.substring(0, 60));
-                doScan(code.data.trim());
-              }
-            } catch {}
-          }
-          animFrame = requestAnimationFrame(scan);
-        };
-
-        animFrame = requestAnimationFrame(scan);
-        // Store cancel function
-        readerRef.current = { reset: () => cancelAnimationFrame(animFrame) };
-      }
+      animId = requestAnimationFrame(scan);
+      readerRef.current = { reset: () => { cancelAnimationFrame(animId); } };
     } catch (err) {
       console.error('Camera error:', err);
       toast.error('Camera access denied. Use manual entry.');
     }
-  }, [doScan, scanning]);
+  }, [doScan]);
 
   useEffect(() => { return () => stopCamera(); }, [stopCamera]);
 
