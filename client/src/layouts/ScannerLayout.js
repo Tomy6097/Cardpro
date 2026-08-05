@@ -11,9 +11,21 @@ const ScannerLayout = () => {
   const [settings, setSettings] = useState(null);
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem('cardpro_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        if (s?.logo?.url) setSettings(s);
+      }
+    } catch {}
     fetch(`${API}/public/settings`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.settings) setSettings(d.settings); })
+      .then(d => {
+        if (d?.settings) {
+          setSettings(d.settings);
+          localStorage.setItem('cardpro_settings', JSON.stringify(d.settings));
+        }
+      })
       .catch(() => {});
   }, []);
 

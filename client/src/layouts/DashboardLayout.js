@@ -54,9 +54,21 @@ const DashboardLayout = () => {
   const [companyName, setCompanyName] = useState('Cardpro');
 
   useEffect(() => {
+    // Check cache first
+    try {
+      const cached = localStorage.getItem('cardpro_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        if (s?.logo?.url) setCompanyLogo(s.logo.url);
+        if (s?.companyName) setCompanyName(s.companyName);
+      }
+    } catch {}
+    // Then fetch fresh
     settingsAPI.get().then(r => {
       if (r.data?.settings?.logo?.url) setCompanyLogo(r.data.settings.logo.url);
       if (r.data?.settings?.companyName) setCompanyName(r.data.settings.companyName);
+      // Update cache
+      if (r.data?.settings) localStorage.setItem('cardpro_settings', JSON.stringify(r.data.settings));
     }).catch(() => {});
   }, []);
 

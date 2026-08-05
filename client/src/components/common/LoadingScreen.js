@@ -2,16 +2,29 @@ import React, { useState, useEffect } from 'react';
 
 const API = process.env.REACT_APP_API_URL || '/api';
 
+// Cache settings in localStorage for instant loading
+const getCachedSettings = () => {
+  try {
+    const cached = localStorage.getItem('cardpro_settings');
+    return cached ? JSON.parse(cached) : null;
+  } catch { return null; }
+};
+
 const LoadingScreen = () => {
-  const [logoUrl, setLogoUrl] = useState(null);
-  const [companyName, setCompanyName] = useState('Cardpro');
+  const cached = getCachedSettings();
+  const [logoUrl, setLogoUrl] = useState(cached?.logo?.url || null);
+  const [companyName, setCompanyName] = useState(cached?.companyName || 'Cardpro');
 
   useEffect(() => {
     fetch(`${API}/public/settings`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d?.settings?.logo?.url) setLogoUrl(d.settings.logo.url);
-        if (d?.settings?.companyName) setCompanyName(d.settings.companyName);
+        if (d?.settings) {
+          // Cache for next time
+          localStorage.setItem('cardpro_settings', JSON.stringify(d.settings));
+          if (d.settings.logo?.url) setLogoUrl(d.settings.logo.url);
+          if (d.settings.companyName) setCompanyName(d.settings.companyName);
+        }
       })
       .catch(() => {});
   }, []);
@@ -24,19 +37,20 @@ const LoadingScreen = () => {
       background: 'var(--cream)',
       zIndex: 9999,
     }}>
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '16px' }}>
         {logoUrl ? (
           <img
             src={logoUrl}
             alt={companyName}
-            style={{ height: '56px', width: 'auto', objectFit: 'contain', borderRadius: '12px' }}
+            style={{ height: '60px', width: 'auto', objectFit: 'contain', borderRadius: '12px' }}
+            onError={() => setLogoUrl(null)}
           />
         ) : (
           <div style={{
-            width: '52px', height: '52px', borderRadius: '14px',
+            width: '56px', height: '56px', borderRadius: '14px',
             background: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Poppins', fontSize: '24px', fontWeight: 800, color: 'var(--secondary)',
+            fontFamily: 'Poppins', fontSize: '26px', fontWeight: 800, color: 'var(--secondary)',
           }}>
             {companyName[0]?.toUpperCase()}
           </div>
