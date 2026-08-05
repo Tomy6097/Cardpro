@@ -134,13 +134,13 @@ const EventDetail = () => {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px', gap: '12px' }}>
           <div>
-            <h1 style={{ fontFamily: 'Poppins', fontSize: '24px', fontWeight: 700, margin: '0 0 6px' }}>{ev.name}</h1>
-            <p style={{ margin: 0, opacity: 0.75, fontSize: '14px' }}>Client: {ev.clientName}</p>
+            <h1 style={{ fontFamily: 'Poppins', fontSize: '24px', fontWeight: 700, margin: '0 0 6px', color: '#FFFFFF' }}>{ev.name}</h1>
+            <p style={{ margin: 0, opacity: 0.75, fontSize: '14px', color: 'rgba(255,255,255,0.85)' }}>Client: {ev.clientName}</p>
           </div>
           <Badge status={ev.status} />
         </div>
 
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', opacity: 0.85, marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', opacity: 0.9, marginBottom: '20px', color: 'rgba(255,255,255,0.9)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             {ev.date ? format(new Date(ev.date), 'MMMM d, yyyy') : '—'}{ev.time && ` at ${ev.time}`}
