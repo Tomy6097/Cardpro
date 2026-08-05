@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { guestsAPI, eventsAPI } from '../api';
@@ -20,37 +21,12 @@ const emptyForm = { guestName: '', phone: '', email: '', ticketType: 'Single', t
 const CardPreviewModal = ({ guest, onClose }) => {
   if (!guest) return null;
 
-  return (
+  const content = (
     <>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1999, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }} />
-
-      {/* Modal — always centered regardless of scroll */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 2000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          pointerEvents: 'none',
-        }}
-      >
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', pointerEvents: 'none' }}>
         <div
-          style={{
-            width: 'min(460px, calc(100vw - 32px))',
-            maxHeight: 'calc(100vh - 32px)',
-            background: 'var(--white)',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            animation: 'cardModalIn 0.2s ease',
-            pointerEvents: 'all',
-          }}
+          style={{ width: 'min(460px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'cardModalIn 0.2s ease', pointerEvents: 'all' }}
           onClick={e => e.stopPropagation()}
         >
         {/* Header */}
@@ -167,8 +143,6 @@ const CardPreviewModal = ({ guest, onClose }) => {
             }}>
               Close
             </button>
-          </div>
-        )}
       </div>
       </div>
       <style>{`
@@ -179,6 +153,8 @@ const CardPreviewModal = ({ guest, onClose }) => {
       `}</style>
     </>
   );
+
+  return ReactDOM.createPortal(content, document.body);
 };
 
 const GuestList = () => {
