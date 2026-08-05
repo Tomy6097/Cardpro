@@ -259,59 +259,6 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
   });
 });
 
-      let templateImage;
-      try { templateImage = await pdfDoc.embedPng(templateBytes); }
-      catch { templateImage = await pdfDoc.embedJpg(templateBytes); }
-
-      const { width, height } = templateImage.scale(1);
-      const page = pdfDoc.addPage([width, height]);
-      page.drawImage(templateImage, { x: 0, y: 0, width, height });
-
-      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const config = event.cardTemplate;
-      const nameColor = hexToRgb(config.guestNameColor || '#FFFFFF');
-      const fontSize = config.guestNameFontSize || 24;
-      const nameWidth = font.widthOfTextAtSize(guest.guestName, fontSize);
-      const namePctX = (config.guestNamePosition?.x || 50) / 100;
-      const namePctY = (config.guestNamePosition?.y || 85) / 100;
-      const nameX = config.guestNameAlign === 'center'
-        ? (width * namePctX) - (nameWidth / 2)
-        : config.guestNameAlign === 'right'
-          ? (width * namePctX) - nameWidth
-          : width * namePctX;
-      const nameY = height * (1 - namePctY);
-
-      // Shadow/outline
-      const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
-        ? { r: 0, g: 0, b: 0 } : { r: 1, g: 1, b: 1 };
-      const offsets = [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]];
-      for (const [ox, oy] of offsets) {
-        page.drawText(guest.guestName, { x: nameX+ox, y: nameY+oy, size: fontSize, font, color: rgb(shadowColor.r, shadowColor.g, shadowColor.b), opacity: 0.6 });
-      }
-      page.drawText(guest.guestName, { x: nameX, y: nameY, size: fontSize, font, color: rgb(nameColor.r, nameColor.g, nameColor.b), opacity: 1 });
-
-      if (config.showQR !== false && guest.qrToken) {
-        const qrSize = config.qrSize || 150;
-        const qrBuffer = await generateQRCodeBuffer(guest.qrToken, { size: qrSize });
-        const qrImage = await pdfDoc.embedPng(qrBuffer);
-        const qrPctX = (config.qrPosition?.x || 70) / 100;
-        const qrPctY = (config.qrPosition?.y || 70) / 100;
-        page.drawImage(qrImage, {
-          x: width * qrPctX - qrSize / 2,
-          y: height * (1 - qrPctY) - qrSize / 2,
-          width: qrSize, height: qrSize,
-        });
-      }
-
-      const pdfBytes = await pdfDoc.save();
-      const result = await uploadToCloudinary(Buffer.from(pdfBytes), {
-        folder: `cardpro/events/${eventId}/cards`,
-        public_id: `card_${guest._id}`,
-        format: 'jpg',
-        resource_type: 'image',
-        transformation: [{ quality: 'auto:best', dpr: '2.0' }],
-      });
-
 exports.downloadCardPDF = asyncHandler(async (req, res) => {
   const guest = await Guest.findById(req.params.id);
   if (!guest || !guest.cardUrl) {
