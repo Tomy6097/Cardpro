@@ -29,21 +29,30 @@ const CardPreviewModal = ({ guest, onClose }) => {
       <div
         style={{
           position: 'fixed',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
+          inset: 0,
           zIndex: 2000,
-          width: 'min(460px, calc(100vw - 32px))',
-          maxHeight: 'calc(100vh - 32px)',
-          background: 'var(--white)',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'cardModalIn 0.2s ease',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          pointerEvents: 'none',
         }}
-        onClick={e => e.stopPropagation()}
       >
+        <div
+          style={{
+            width: 'min(460px, calc(100vw - 32px))',
+            maxHeight: 'calc(100vh - 32px)',
+            background: 'var(--white)',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'cardModalIn 0.2s ease',
+            pointerEvents: 'all',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
         {/* Header */}
         <div style={{
           background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))',
@@ -161,10 +170,11 @@ const CardPreviewModal = ({ guest, onClose }) => {
           </div>
         )}
       </div>
+      </div>
       <style>{`
         @keyframes cardModalIn {
-          from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
-          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          from { opacity: 0; transform: scale(0.97); }
+          to { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </>
