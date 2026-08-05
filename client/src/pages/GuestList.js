@@ -25,7 +25,7 @@ const CardPreviewModal = ({ guest, onClose }) => {
       {/* Backdrop */}
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1999, background: 'rgba(26,10,0,0.85)', backdropFilter: 'blur(8px)' }} />
 
-      {/* Modal */}
+      {/* Modal — always centered regardless of scroll */}
       <div
         style={{
           position: 'fixed',
@@ -71,30 +71,34 @@ const CardPreviewModal = ({ guest, onClose }) => {
           </button>
         </div>
 
-        {/* Card Image — fills available space */}
-        <div style={{ background: '#1a0a00', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+        {/* Card Image */}
+        <div style={{ background: '#1a0a00', flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
           {guest.cardUrl ? (
             <img
               src={guest.cardUrl}
               alt={`Card for ${guest.guestName}`}
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                objectFit: 'contain',
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
+              onError={(e) => {
+                // If image fails, try Cloudinary JPG conversion
+                const url = guest.cardUrl;
+                if (url.includes('/upload/') && !url.includes('f_jpg')) {
+                  e.target.src = url.replace('/upload/', '/upload/f_jpg,q_auto/');
+                } else {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = `
+                    <div style="padding:32px;text-align:center;color:rgba(255,255,255,0.5)">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style="margin-bottom:12px">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                      </svg>
+                      <p style="font-size:13px;margin:0">Card not ready yet. Regenerate the card.</p>
+                    </div>`;
+                }
               }}
             />
           ) : guest.qrCodeUrl ? (
-            /* No card yet — show QR only */
             <div style={{ padding: '32px', textAlign: 'center' }}>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
-                QR Code
-              </p>
-              <div style={{
-                display: 'inline-block', background: 'white',
-                padding: '16px', borderRadius: '16px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>QR Code</p>
+              <div style={{ display: 'inline-block', background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                 <img src={guest.qrCodeUrl} alt="QR" style={{ width: '200px', height: '200px', display: 'block' }} />
                 <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 800, color: '#1A0A00', letterSpacing: '3px', textAlign: 'center' }}>
                   {guest.ticketType?.toUpperCase()}
@@ -107,7 +111,6 @@ const CardPreviewModal = ({ guest, onClose }) => {
           ) : (
             <div style={{ padding: '48px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
               <p>QR code is being generated...</p>
-              <p style={{ fontSize: '12px', marginTop: '4px' }}>Refresh in a few seconds.</p>
             </div>
           )}
         </div>
