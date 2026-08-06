@@ -36,24 +36,46 @@ const sendBeemSMS = async (phone, message, settings) => {
   const secretKey = settings?.beemSecretKey || process.env.BEEM_SECRET_KEY;
   const senderId = settings?.beemSenderId || process.env.BEEM_SENDER_ID || 'CARDPRO';
 
-  const recipients = [{ recipient_id: 1, dest_addr: phone }];
+  if (!apiKey || !secretKey) {
+    throw new Error('Beem Africa credentials not configured. Set beemApiKey and beemSecretKey in Settings.');
+  }
 
-  const response = await axios.post(
-    'https://apisms.beem.africa/v1/send',
-    {
-      source_addr: senderId,
-      schedule_time: '',
-      encoding: 0,
-      message,
-      recipients,
-    },
-    {
-      auth: { username: apiKey, password: secretKey },
-      headers: { 'Content-Type': 'application/json' },
+  // Ensure phone has no + prefix for Beem
+  const cleanPhone = phone.replace(/^\+/, '');
+
+  const recipients = [{ recipient_id: 1, dest_addr: cleanPhone }];
+
+  try {
+    const response = await axios.post(
+      'https://apisms.beem.africa/v1/send',
+      {
+        source_addr: senderId,
+        schedule_time: '',
+        encoding: 0,
+        message,
+        recipients,
+      },
+      {
+        auth: { username: apiKey, password: secretKey },
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      }
+    );
+
+    // Beem returns success_count in response
+    const data = response.data;
+    if (data?.successful === 0 || (data?.data && data.data[0]?.request_id === null)) {
+      throw new Error(`Beem rejected message: ${JSON.stringify(data)}`);
     }
-  );
 
-  return response.data;
+    return data;
+  } catch (err) {
+    if (err.response) {
+      // Beem returned an error response
+      throw new Error(`Beem API error (${err.response.status}): ${JSON.stringify(err.response.data)}`);
+    }
+    throw err;
+  }
 };
 
 // --- WhatsApp via Twilio ---
