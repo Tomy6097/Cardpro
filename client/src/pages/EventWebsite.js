@@ -392,10 +392,9 @@ const EventWebsite = () => {
                 style={{
                   width:'100%',
                   display:'block',
-                  objectFit:'cover',
+                  objectFit:'contain',
                   objectPosition:'center center',
-                  maxHeight:'100vh',
-                  minHeight:'60vh',
+                  background:'#000',
                 }}
               />
               {/* Gradient fade bottom */}
@@ -634,7 +633,7 @@ const EventWebsite = () => {
                 <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
                   {dressImages.map((img,i)=>(
                     <div key={img._id||i} style={{borderRadius:'14px',overflow:'hidden',border:`1px solid ${ac}0f`,boxShadow:'0 8px 24px rgba(0,0,0,0.35)'}}>
-                      <img src={img.url} alt={img.caption||'Dress'} style={{width:'100%',display:'block',objectFit:'cover',maxHeight:'70vh'}}/>
+                      <img src={img.url} alt={img.caption||'Dress'} style={{width:'100%',display:'block',objectFit:'contain',background:'#000'}}/>
                       {(img.caption || img.gender !== 'general') && (
                         <div style={{padding:'10px 14px',background:`${bg}ee`,borderTop:`1px solid ${ac}0f`}}>
                           <p style={{color:pc,fontSize:'13px',margin:0,textAlign:'center',fontWeight:600,letterSpacing:'1px',fontFamily:ff}}>

@@ -294,7 +294,7 @@ exports.uploadDressCodeImage = asyncHandler(async (req, res) => {
   const result = await uploadToCloudinary(req.file.buffer, {
     folder: `cardpro/events/${event._id}/dresscode`,
     format: 'jpg',
-    transformation: [{ quality: 'auto:good', width: 800 }],
+    transformation: [{ quality: 'auto:good', width: 1200, crop: 'limit' }],
   });
 
   event.dressCodeImages.push({
@@ -327,7 +327,7 @@ exports.uploadEventPhoto = asyncHandler(async (req, res) => {
   const result = await uploadToCloudinary(req.file.buffer, {
     folder: `cardpro/events/${event._id}/photos`,
     format: 'jpg',
-    transformation: [{ quality: 'auto:good', width: 1200, crop: 'limit' }],
+    transformation: [{ quality: 'auto:good', width: 1600, crop: 'limit' }],
   });
 
   event.eventPhotos.push({
