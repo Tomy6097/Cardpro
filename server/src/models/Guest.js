@@ -92,7 +92,11 @@ guestSchema.pre('save', function (next) {
   next();
 });
 
-guestSchema.index({ event: 1, phone: 1 }, { unique: true, partialFilterExpression: { isDeleted: false } });
+// Unique: same name + same phone in same event (allow same phone with different name)
+guestSchema.index(
+  { event: 1, phone: 1, guestName: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false } }
+);
 guestSchema.index({ event: 1, isDeleted: 1 });
 guestSchema.index({ event: 1, rsvpStatus: 1 });
 guestSchema.index({ event: 1, scanStatus: 1 });

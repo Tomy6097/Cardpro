@@ -172,9 +172,15 @@ exports.addGuest = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid phone number.' });
   }
 
-  const existing = await Guest.findOne({ event: eventId, phone: normalizedPhone, isDeleted: false });
+  // Block only exact same name + same phone combination
+  const existing = await Guest.findOne({
+    event: eventId,
+    phone: normalizedPhone,
+    guestName: { $regex: `^${guestName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+    isDeleted: false,
+  });
   if (existing) {
-    return res.status(400).json({ success: false, message: 'A guest with this phone number already exists in this event.' });
+    return res.status(400).json({ success: false, message: `Guest "${guestName.trim()}" with this phone number already exists.` });
   }
 
   const guest = await Guest.create({
@@ -295,26 +301,28 @@ exports.importGuests = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check for duplicates within CSV itself
-  const phoneSeen = new Set();
+  // Check for duplicates within CSV itself (same name + same phone)
+  const namePhoneseen = new Set();
   const uniqueResults = [];
   for (const r of results) {
-    if (phoneSeen.has(r.phone)) {
-      errors.push({ guestName: r.guestName, reason: 'Duplicate phone in CSV' });
+    const key = `${r.guestName.toLowerCase()}|${r.phone}`;
+    if (namePhoneseen.has(key)) {
+      errors.push({ guestName: r.guestName, reason: 'Duplicate name+phone in CSV' });
     } else {
-      phoneSeen.add(r.phone);
+      namePhoneseen.add(key);
       uniqueResults.push(r);
     }
   }
 
-  // Get existing phones in event
-  const existingGuests = await Guest.find({ event: eventId, isDeleted: false }).select('phone');
-  const existingPhones = new Set(existingGuests.map(g => g.phone));
+  // Get existing name+phone combos in event
+  const existingGuests = await Guest.find({ event: eventId, isDeleted: false }).select('phone guestName');
+  const existingKeys = new Set(existingGuests.map(g => `${g.guestName.toLowerCase()}|${g.phone}`));
 
   const toInsert = [];
   for (const r of uniqueResults) {
-    if (existingPhones.has(r.phone)) {
-      errors.push({ guestName: r.guestName, reason: 'Phone already exists in event' });
+    const key = `${r.guestName.toLowerCase()}|${r.phone}`;
+    if (existingKeys.has(key)) {
+      errors.push({ guestName: r.guestName, reason: 'Same name and phone already exists in event' });
     } else {
       toInsert.push({ ...r, event: eventId });
     }
@@ -420,16 +428,17 @@ exports.restoreGuest = asyncHandler(async (req, res) => {
   const guest = await Guest.findById(req.params.id);
   if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
 
-  // Check if phone already exists in active guests
+  // Check if exact same name+phone already exists in active guests
   const conflict = await Guest.findOne({
     event: guest.event,
     phone: guest.phone,
+    guestName: guest.guestName,
     isDeleted: false,
     _id: { $ne: guest._id },
   });
 
   if (conflict) {
-    return res.status(400).json({ success: false, message: 'Cannot restore: phone number already active in event.' });
+    return res.status(400).json({ success: false, message: 'Cannot restore: same name and phone already active in event.' });
   }
 
   guest.isDeleted = false;
