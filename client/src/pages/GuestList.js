@@ -349,6 +349,20 @@ const GuestList = () => {
                         Card
                       </button>
 
+                      {/* Preview as Guest — opens invitation website */}
+                      {event?.slug && g.verificationCode && (
+                        <a
+                          href={`/event/${event.slug}?code=${g.verificationCode}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ padding: '4px 10px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: '#92400E', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontFamily: 'Inter' }}
+                          title="Preview invitation as this guest"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          Invite
+                        </a>
+                      )}
+
                       {/* QR generating indicator */}
                       {!g.qrCodeUrl && (
                         <span style={{ padding: '4px 8px', background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 'var(--radius-sm)', fontSize: '10px', color: '#854D0E' }}>
