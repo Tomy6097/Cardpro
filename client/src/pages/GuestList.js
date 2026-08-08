@@ -329,7 +329,20 @@ const GuestList = () => {
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{g.phone}</td>
                   <td style={{ padding: '12px 16px' }}><Badge status={g.ticketType} /></td>
-                  <td style={{ padding: '12px 16px' }}><Badge status={g.rsvpStatus} /></td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                      <Badge status={g.rsvpStatus} />
+                      {g.rsvpStatus === 'declined' && g.declineReason && (
+                        <span title={g.declineReason} style={{
+                          fontSize: '10px', color: 'var(--danger)', maxWidth: '120px',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          cursor: 'help', fontStyle: 'italic', display: 'block',
+                        }}>
+                          "{g.declineReason}"
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ padding: '12px 16px' }}><Badge status={g.messageStatus} /></td>
                   <td style={{ padding: '12px 16px' }}><Badge status={g.scanStatus} /></td>
                   <td style={{ padding: '12px 16px' }}>

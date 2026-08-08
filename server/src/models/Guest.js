@@ -43,6 +43,7 @@ const guestSchema = new mongoose.Schema({
     default: 'pending',
   },
   rsvpAt: Date,
+  declineReason: { type: String, trim: true, default: '' },
 
   // Messaging
   messageStatus: {

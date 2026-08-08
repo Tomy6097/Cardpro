@@ -14,6 +14,11 @@ const T = {
     confirmBtn: 'Thibitisha Mahudhurio Yangu', declineBtn: 'Sitaweza Kuhudhuria',
     confirmed: 'Mahudhurio Yamethibitishwa', confirmedSub: 'Tunatarajia kukuona!',
     declined: 'Asante kwa kutujulisha!',
+    declineFormTitle: 'Tunaomboleza huwezi kuhudhuria',
+    declineFormHint: 'Tafadhali tueleza sababu ya kutokuwepo (si lazima)',
+    declineReasonPlaceholder: 'Mfano: Nitakuwa safarini, nina ugonjwa, kuna harusi nyingine...',
+    declineConfirmBtn: 'Tuma na Sahihi Kutokuwepo',
+    cancelBtn: 'Rudi Nyuma',
     mapsBtn: 'Angalia Mahali kwenye Ramani',
     dressSection: 'Mavazi', colorPalette: 'Rangi Zinazopendekezwa',
     ladies: 'Wanawake', gents: 'Wanaume',
@@ -31,6 +36,11 @@ const T = {
     confirmBtn: 'Confirm My Attendance', declineBtn: 'Unable to Attend',
     confirmed: 'Attendance Confirmed', confirmedSub: 'We look forward to seeing you!',
     declined: 'Thank you for letting us know!',
+    declineFormTitle: 'Sorry you cannot make it',
+    declineFormHint: 'Please let us know the reason for your absence (optional)',
+    declineReasonPlaceholder: 'e.g. I will be traveling, I have another commitment...',
+    declineConfirmBtn: 'Submit & Confirm Absence',
+    cancelBtn: 'Go Back',
     mapsBtn: 'View on Google Maps',
     dressSection: 'Dress Code', colorPalette: 'Color Palette',
     ladies: 'Ladies', gents: 'Gentlemen',
@@ -251,6 +261,8 @@ const EventWebsite = () => {
   const [error,   setError]   = useState(null);
   const [rsvpDone,     setRsvpDone]     = useState(false);
   const [rsvpDeclined, setRsvpDeclined] = useState(false);
+  const [showDeclineForm, setShowDeclineForm] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
   const [timeLeft, setTimeLeft] = useState({});
   const [settings, setSettings] = useState(null);
   const [lang,    setLang]    = useState('sw'); // 'sw' | 'en'
@@ -298,9 +310,13 @@ const EventWebsite = () => {
   };
   const declineRSVP = async () => {
     try {
-      const r = await fetch(`${API}/rsvp/decline/${code}`,{method:'POST'});
+      const r = await fetch(`${API}/rsvp/decline/${code}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: declineReason }),
+      });
       const d = await r.json();
-      if(d.success) setRsvpDeclined(true);
+      if (d.success) { setRsvpDeclined(true); setShowDeclineForm(false); }
     } catch {}
   };
 
@@ -548,23 +564,85 @@ const EventWebsite = () => {
 
             {/* RSVP buttons */}
             {guest && code && !rsvpDone && !rsvpDeclined && guest.rsvpStatus !== 'confirmed' && (
-              <div style={{marginTop:'24px',display:'flex',flexDirection:'column',gap:'12px'}}>
-                <button onClick={confirmRSVP} className="btn-gold" style={{
-                  padding:'16px',
-                  background:`linear-gradient(135deg, #b8860b, #C9A84C, #e8c84e)`,
-                  color:'#3a1f00',border:'none',borderRadius:'14px',
-                  fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:ff,
-                  transition:'all .25s',boxShadow:'0 6px 24px rgba(201,168,76,0.3)',
-                }}>
-                  {t.confirmBtn}
-                </button>
-                <button onClick={declineRSVP} style={{
-                  padding:'12px',background:'transparent',color:`${ac}44`,
-                  border:`1px solid ${ac}18`,borderRadius:'12px',
-                  fontSize:'13px',cursor:'pointer',fontFamily:'Inter,sans-serif',transition:'all .25s',
-                }}>
-                  {t.declineBtn}
-                </button>
+              <div style={{marginTop:'24px'}}>
+                {!showDeclineForm ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                    <button onClick={confirmRSVP} className="btn-gold" style={{
+                      padding:'16px',
+                      background:`linear-gradient(135deg, #b8860b, #C9A84C, #e8c84e)`,
+                      color:'#3a1f00',border:'none',borderRadius:'14px',
+                      fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:ff,
+                      transition:'all .25s',boxShadow:'0 6px 24px rgba(201,168,76,0.3)',
+                    }}>
+                      {t.confirmBtn}
+                    </button>
+                    <button onClick={() => setShowDeclineForm(true)} style={{
+                      padding:'12px',background:'transparent',color:`${ac}44`,
+                      border:`1px solid ${ac}18`,borderRadius:'12px',
+                      fontSize:'13px',cursor:'pointer',fontFamily:'Inter,sans-serif',transition:'all .25s',
+                    }}>
+                      {t.declineBtn}
+                    </button>
+                  </div>
+                ) : (
+                  /* Decline form with reason */
+                  <div style={{
+                    background:'rgba(127,29,29,0.12)',
+                    border:'1px solid rgba(239,68,68,0.25)',
+                    borderRadius:'16px',padding:'20px',
+                    animation:'fadeIn .3s ease',
+                  }}>
+                    <p style={{color:'#fca5a5',fontSize:'15px',fontWeight:600,margin:'0 0 6px',fontFamily:ff}}>
+                      {t.declineFormTitle}
+                    </p>
+                    <p style={{color:`${ac}44`,fontSize:'12px',margin:'0 0 14px',fontFamily:'Inter,sans-serif'}}>
+                      {t.declineFormHint}
+                    </p>
+                    <textarea
+                      value={declineReason}
+                      onChange={e => setDeclineReason(e.target.value)}
+                      placeholder={t.declineReasonPlaceholder}
+                      rows={3}
+                      style={{
+                        width:'100%',padding:'12px',
+                        background:'rgba(255,255,255,0.06)',
+                        border:'1px solid rgba(239,68,68,0.3)',
+                        borderRadius:'10px',color:'white',
+                        fontSize:'14px',fontFamily:'Inter,sans-serif',
+                        outline:'none',resize:'vertical',
+                        boxSizing:'border-box',marginBottom:'14px',
+                        lineHeight:1.6,
+                      }}
+                      onFocus={e=>e.target.style.borderColor='rgba(239,68,68,0.6)'}
+                      onBlur={e=>e.target.style.borderColor='rgba(239,68,68,0.3)'}
+                    />
+                    <div style={{display:'flex',gap:'10px'}}>
+                      <button
+                        onClick={declineRSVP}
+                        style={{
+                          flex:1,padding:'13px',
+                          background:'rgba(220,38,38,0.75)',
+                          color:'white',border:'none',borderRadius:'10px',
+                          fontSize:'14px',fontWeight:600,cursor:'pointer',
+                          fontFamily:ff,transition:'all .25s',
+                        }}
+                      >
+                        {t.declineConfirmBtn}
+                      </button>
+                      <button
+                        onClick={() => { setShowDeclineForm(false); setDeclineReason(''); }}
+                        style={{
+                          padding:'13px 18px',background:'transparent',
+                          color:`${ac}44`,border:`1px solid ${ac}15`,
+                          borderRadius:'10px',fontSize:'13px',cursor:'pointer',
+                          fontFamily:'Inter,sans-serif',
+                        }}
+                      >
+                        {t.cancelBtn}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -579,8 +657,16 @@ const EventWebsite = () => {
 
             {/* Declined */}
             {rsvpDeclined && (
-              <div style={{marginTop:'20px',padding:'16px',background:'rgba(127,29,29,0.2)',borderRadius:'14px',textAlign:'center',border:'1px solid rgba(127,29,29,0.4)'}}>
-                <p style={{color:'#fca5a5',fontSize:'14px',margin:0,fontFamily:'Inter,sans-serif'}}>{t.declined}</p>
+              <div style={{marginTop:'20px',padding:'20px',background:'rgba(127,29,29,0.2)',borderRadius:'14px',textAlign:'center',border:'1px solid rgba(127,29,29,0.4)',animation:'fadeIn .5s'}}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="2" style={{margin:'0 0 8px'}}>
+                  <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <p style={{color:'#fca5a5',fontWeight:700,fontSize:'15px',margin:'0 0 4px',fontFamily:ff}}>{t.declined}</p>
+                {declineReason && (
+                  <p style={{color:`${ac}44`,fontSize:'12px',margin:'8px 0 0',fontFamily:'Inter,sans-serif',fontStyle:'italic',lineHeight:1.5}}>
+                    "{declineReason}"
+                  </p>
+                )}
               </div>
             )}
 

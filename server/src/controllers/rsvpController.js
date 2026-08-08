@@ -52,18 +52,22 @@ exports.confirmRSVP = asyncHandler(async (req, res) => {
 
 exports.declineRSVP = asyncHandler(async (req, res) => {
   const { verificationCode } = req.params;
+  const { reason } = req.body; // optional decline reason
 
   const guest = await Guest.findOne({ verificationCode, isDeleted: false }).populate('event');
   if (!guest) return res.status(404).json({ success: false, message: 'Invalid verification code.' });
 
   guest.rsvpStatus = 'declined';
   guest.rsvpAt = new Date();
+  if (reason && reason.trim()) {
+    guest.declineReason = reason.trim();
+  }
   await guest.save({ validateBeforeSave: false });
 
   await logActivity({
     event: guest.event._id,
     action: 'rsvp_decline',
-    description: `Guest "${guest.guestName}" declined attendance`,
+    description: `Guest "${guest.guestName}" declined attendance${reason ? `: "${reason.trim()}"` : ''}`,
     req,
   });
 
