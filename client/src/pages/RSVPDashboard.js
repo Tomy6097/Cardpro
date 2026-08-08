@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { eventsAPI, rsvpAPI } from '../api';
+import { eventsAPI, rsvpAPI, guestsAPI } from '../api';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const RSVPDashboard = () => {
@@ -18,8 +18,15 @@ const RSVPDashboard = () => {
     refetchInterval: 30000,
   });
 
+  // Fetch declined guests with reasons
+  const { data: declinedData } = useQuery({
+    queryKey: ['declined-guests', eventId],
+    queryFn: () => guestsAPI.getAll(eventId, { rsvpStatus: 'declined', limit: 100 }).then(r => r.data),
+  });
+
   const stats = statsData?.stats || {};
   const ev = eventData?.event;
+  const declinedGuests = (declinedData?.guests || []).filter(g => g.declineReason);
 
   const pieData = [
     { name: 'Confirmed', value: stats.confirmed || 0, color: '#2D6A4F' },
@@ -96,6 +103,66 @@ const RSVPDashboard = () => {
               </p>
             )}
           </div>
+
+          {/* Decline Reasons */}
+          {declinedGuests.length > 0 && (
+            <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '24px', marginTop: '20px' }}>
+              <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                Sababu za Kutokuwepo
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                Wageni {declinedGuests.length} waliokataa na kutoa sababu
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {declinedGuests.map(g => (
+                  <div key={g._id} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '14px',
+                    padding: '14px 16px',
+                    background: '#FEF2F2',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid #FECACA',
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '50%',
+                      background: '#991B1B', color: 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '14px', fontWeight: 700, fontFamily: 'Poppins',
+                      flexShrink: 0,
+                    }}>
+                      {g.guestName[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#991B1B', margin: 0, fontFamily: 'Poppins' }}>
+                          {g.guestName}
+                        </p>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'white', padding: '2px 8px', borderRadius: '20px', border: '1px solid #FECACA' }}>
+                          {g.ticketType}
+                        </span>
+                        {g.rsvpAt && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {new Date(g.rsvpAt).toLocaleDateString('sw-TZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{
+                        fontSize: '13px', color: '#7F1D1D', margin: 0,
+                        fontStyle: 'italic', lineHeight: 1.5,
+                        background: 'white', padding: '8px 12px',
+                        borderRadius: '8px', border: '1px solid #FECACA',
+                      }}>
+                        "{g.declineReason}"
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
