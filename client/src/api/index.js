@@ -22,6 +22,7 @@ export const eventsAPI = {
   uploadVideo: (id, formData) => api.post(`/events/${id}/video`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  deleteVideo: (id) => api.delete(`/events/${id}/video`),
   updateCardConfig: (id, data) => api.put(`/events/${id}/card-config`, data),
   updateWebsiteTheme: (id, data) => api.put(`/events/${id}/website-theme`, data),
   updateDressCodeColors: (id, data) => api.put(`/events/${id}/dresscode-colors`, data),

@@ -163,7 +163,11 @@ exports.uploadVideo = asyncHandler(async (req, res) => {
     resource_type: 'video',
   });
 
-  event.invitationVideo = { url: result.secure_url, publicId: result.public_id };
+  event.invitationVideo = {
+    url: result.secure_url,
+    publicId: result.public_id,
+    caption: req.body.caption || '',
+  };
   await event.save();
 
   await logActivity({
@@ -174,6 +178,27 @@ exports.uploadVideo = asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, event });
+});
+
+exports.deleteVideo = asyncHandler(async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+  if (event.invitationVideo?.publicId) {
+    await deleteFromCloudinary(event.invitationVideo.publicId, 'video');
+  }
+
+  event.invitationVideo = undefined;
+  await event.save();
+
+  await logActivity({
+    event: event._id,
+    action: 'delete_video',
+    description: `Invitation video deleted for event "${event.name}"`,
+    req,
+  });
+
+  res.json({ success: true, message: 'Video deleted.' });
 });
 
 exports.updateCardConfig = asyncHandler(async (req, res) => {

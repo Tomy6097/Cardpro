@@ -25,6 +25,7 @@ const EventWebsiteEditor = () => {
   const [dressCaption, setDressCaption] = useState('');
   const [dressGender, setDressGender] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
+  const [videoCaption, setVideoCaption] = useState('');
   const [dressColors, setDressColors] = useState([]);
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#C9A84C');
@@ -76,7 +77,13 @@ const EventWebsiteEditor = () => {
 
   const uploadVideoMutation = useMutation({
     mutationFn: fd => eventsAPI.uploadVideo(eventId, fd),
-    onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Video uploaded!'); },
+    onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Video uploaded!'); setVideoCaption(''); },
+    onError: err => toast.error(err.message),
+  });
+
+  const deleteVideoMutation = useMutation({
+    mutationFn: () => eventsAPI.deleteVideo(eventId),
+    onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Video removed.'); },
     onError: err => toast.error(err.message),
   });
 
@@ -93,7 +100,7 @@ const EventWebsiteEditor = () => {
   const handleVideo = e => {
     const f = e.target.files?.[0]; if (!f) return;
     if (f.size > 50 * 1024 * 1024) { toast.error('Max 50MB'); return; }
-    const fd = new FormData(); fd.append('video', f);
+    const fd = new FormData(); fd.append('video', f); fd.append('caption', videoCaption);
     uploadVideoMutation.mutate(fd); e.target.value = '';
   };
 
@@ -305,12 +312,37 @@ const EventWebsiteEditor = () => {
                 <video controls style={{ width: '100%', maxHeight: '160px', display: 'block', background: '#000' }}>
                   <source src={ev.invitationVideo.url} />
                 </video>
-                <div style={{ padding: '7px 12px', background: 'var(--cream)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Current video</span>
-                  <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 600 }}>✓ Active</span>
+                <div style={{ padding: '10px 12px', background: 'var(--cream)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Video imewekwa</span>
+                    {ev.invitationVideo.caption && (
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        "{ev.invitationVideo.caption}"
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { if (window.confirm('Futa video?')) deleteVideoMutation.mutate(); }}
+                    disabled={deleteVideoMutation.isPending}
+                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', background: 'var(--danger-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--danger)', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                    Futa
+                  </button>
                 </div>
               </div>
             )}
+
+            {/* Caption for video */}
+            <input
+              type="text"
+              placeholder="Caption ya video (optional, e.g. 'Trailer ya Harusi')"
+              value={videoCaption}
+              onChange={e => setVideoCaption(e.target.value)}
+              style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '13px', outline: 'none', fontFamily: 'Inter', marginBottom: '10px', boxSizing: 'border-box' }}
+              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
 
             <div onClick={() => !uploadVideoMutation.isPending && videoRef.current?.click()} style={{ border: `2px dashed ${uploadVideoMutation.isPending ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--radius)', padding: '24px', textAlign: 'center', cursor: uploadVideoMutation.isPending ? 'not-allowed' : 'pointer', background: uploadVideoMutation.isPending ? 'var(--cream)' : 'var(--cream-dark)' }}>
               {uploadVideoMutation.isPending ? (

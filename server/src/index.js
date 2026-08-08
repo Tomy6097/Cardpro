@@ -2,6 +2,10 @@
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
+
+// Force Google DNS for local development (fix for ISPs blocking MongoDB Atlas DNS)
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -150,6 +154,8 @@ const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       maxPoolSize: 10,
+      // Force Google DNS by using SRV lookup manually handled by mongoose
+      family: 4, // Force IPv4
     });
     logger.info('MongoDB connected successfully');
     await seedAdmin();

@@ -3,7 +3,7 @@ const { protect, adminOnly } = require('../middleware/auth');
 const { imageUpload, videoUpload } = require('../middleware/upload');
 const {
   createEvent, getEvents, getEvent, updateEvent, deleteEvent,
-  uploadTemplate, uploadVideo, updateCardConfig, getEventStats,
+  uploadTemplate, uploadVideo, deleteVideo, updateCardConfig, getEventStats,
   updateWebsiteTheme, uploadDressCodeImage, deleteDressCodeImage,
   uploadEventPhoto, deleteEventPhoto, updateDressCodeColors,
 } = require('../controllers/eventController');
@@ -18,6 +18,7 @@ router.delete('/:id', adminOnly, deleteEvent);
 router.get('/:id/stats', getEventStats);
 router.post('/:id/template', adminOnly, imageUpload.single('template'), uploadTemplate);
 router.post('/:id/video', adminOnly, videoUpload.single('video'), uploadVideo);
+router.delete('/:id/video', adminOnly, deleteVideo);
 router.put('/:id/card-config', adminOnly, updateCardConfig);
 router.put('/:id/website-theme', adminOnly, updateWebsiteTheme);
 router.put('/:id/dresscode-colors', adminOnly, updateDressCodeColors);
