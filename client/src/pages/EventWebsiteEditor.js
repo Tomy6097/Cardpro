@@ -261,8 +261,9 @@ const EventWebsiteEditor = () => {
               {(ev?.dressCodeImages || []).length === 0 ? (
                 <div style={{ gridColumn: '1/-1', padding: '16px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: '12px' }}>No images yet</div>
               ) : ev.dressCodeImages.map(img => (
-                <div key={img._id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                  <img src={img.url} alt={img.caption} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
+                <div key={img._id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', background: '#1a0a00' }}>
+                  <img src={img.url} alt={img.caption} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: '140px', minHeight: '80px' }} />
+                  {img.caption && <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0, padding: '3px 6px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--cream)' }}>{img.caption}</p>}
                   <button onClick={() => deleteDressMutation.mutate(img._id)} style={{ position: 'absolute', top: '3px', right: '3px', width: '20px', height: '20px', background: 'rgba(220,38,38,0.9)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                 </div>
               ))}
@@ -289,8 +290,9 @@ const EventWebsiteEditor = () => {
               {(ev?.eventPhotos || []).length === 0 ? (
                 <div style={{ gridColumn: '1/-1', padding: '16px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: '12px' }}>No photos yet</div>
               ) : ev.eventPhotos.map(photo => (
-                <div key={photo._id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                  <img src={photo.url} alt={photo.caption} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                <div key={photo._id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', background: '#f5f0e8' }}>
+                  <img src={photo.url} alt={photo.caption} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: '140px', minHeight: '80px', background: '#1a0a00' }} />
+                  {photo.caption && <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0, padding: '3px 6px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.caption}</p>}
                   <button onClick={() => deletePhotoMutation.mutate(photo._id)} style={{ position: 'absolute', top: '3px', right: '3px', width: '20px', height: '20px', background: 'rgba(220,38,38,0.9)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                 </div>
               ))}
