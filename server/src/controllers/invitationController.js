@@ -78,7 +78,7 @@ const sendBeemSMS = async (phone, message, settings) => {
   }
 };
 
-// --- WhatsApp via Twilio ---
+// --- WhatsApp via Twilio (plain body) ---
 const sendTwilioWhatsApp = async (phone, message, settings) => {
   const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
   const authToken = settings?.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN;
@@ -90,6 +90,38 @@ const sendTwilioWhatsApp = async (phone, message, settings) => {
     to: `whatsapp:+${phone}`,
     body: message,
   });
+};
+
+// --- WhatsApp via Twilio Content Template ---
+const sendTwilioWhatsAppTemplate = async ({ to, contentSid, contentVariables, settings }) => {
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings or .env');
+  }
+  if (!from) {
+    throw new Error('TWILIO_WHATSAPP_FROM not configured. Set it in Settings or .env');
+  }
+  if (!contentSid) {
+    throw new Error('No Content SID provided.');
+  }
+
+  const client = twilio(accountSid, authToken);
+
+  const params = {
+    from,
+    to,
+    contentSid,
+  };
+
+  // Only include contentVariables if there are any
+  if (contentVariables && Object.keys(contentVariables).length > 0) {
+    params.contentVariables = JSON.stringify(contentVariables);
+  }
+
+  return client.messages.create(params);
 };
 
 exports.sendSMS = asyncHandler(async (req, res) => {
@@ -247,3 +279,144 @@ exports.getInvitationStats = asyncHandler(async (req, res) => {
 
   res.json({ success: true, stats: { total, smsSent, whatsappSent, notSent, delivered, failed } });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// INSPECT TWILIO TEMPLATE — fetch variable structure from Twilio
+// ─────────────────────────────────────────────────────────────────
+exports.inspectTemplate = asyncHandler(async (req, res) => {
+  const settings = await Settings.findOne();
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const contentSid = process.env.TWILIO_CONTENT_SID || 'HX9e7d3b8a1f973c95c208541772e9d9a9';
+
+  if (!accountSid || !authToken) {
+    return res.status(400).json({ success: false, message: 'Twilio credentials not configured.' });
+  }
+
+  try {
+    const client = twilio(accountSid, authToken);
+    const content = await client.content.v1.contents(contentSid).fetch();
+    res.json({
+      success: true,
+      template: {
+        sid: content.sid,
+        friendlyName: content.friendlyName,
+        language: content.language,
+        types: content.types,
+        variables: content.variables || {},
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch template: ${err.message}`,
+      code: err.code || null,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// TEST WHATSAPP — sandbox proof-of-concept
+// ─────────────────────────────────────────────────────────────────
+exports.testWhatsApp = asyncHandler(async (req, res) => {
+  const settings = await Settings.findOne();
+
+  const contentSid = process.env.TWILIO_CONTENT_SID || 'HX9e7d3b8a1f973c95c208541772e9d9a9';
+  const testTo     = process.env.TWILIO_TEST_TO;
+
+  if (!testTo) {
+    return res.status(400).json({
+      success: false,
+      message: 'TWILIO_TEST_TO not set in .env — add: TWILIO_TEST_TO=whatsapp:+255XXXXXXXXX',
+    });
+  }
+
+  // Sample test data — mirrors real guest/event data
+  const testData = {
+    guestName:        req.body.guestName        || 'James',
+    eventName:        req.body.eventName        || 'James & Anna Wedding',
+    date:             req.body.date             || '25 December 2026',
+    venue:            req.body.venue            || 'Golden Tulip Dar es Salaam',
+    dressCode:        req.body.dressCode        || 'White and Black',
+    confirmUrl:       req.body.confirmUrl       || 'https://example.com/invite/test123',
+    verificationCode: req.body.verificationCode || 'CP7821',
+  };
+
+  // ContentVariables: Twilio templates use {{1}}, {{2}} etc.
+  // The cardpro_invitation template (Swahili) variables mapped in order:
+  // {{1}} = guestName, {{2}} = eventName, {{3}} = date,
+  // {{4}} = venue, {{5}} = dressCode, {{6}} = confirmUrl, {{7}} = verificationCode
+  // NOTE: If template has fewer variables, unused ones are ignored by Twilio.
+  const contentVariables = {
+    '1': testData.guestName,
+    '2': testData.eventName,
+    '3': testData.date,
+    '4': testData.venue,
+    '5': testData.dressCode,
+    '6': testData.confirmUrl,
+    '7': testData.verificationCode,
+  };
+
+  let messageSid, status, errorMsg, twilioCode;
+
+  try {
+    const result = await sendTwilioWhatsAppTemplate({
+      to: testTo,
+      contentSid,
+      contentVariables,
+      settings,
+    });
+
+    messageSid = result.sid;
+    status = result.status;
+
+    // Log success (no credentials logged)
+    await logActivity({
+      action: 'test_whatsapp',
+      description: `WhatsApp test sent to ${testTo.replace(/\d{6}$/, '******')} — SID: ${messageSid} — Status: ${status}`,
+    });
+
+    res.json({
+      success: true,
+      message: 'WhatsApp invitation sent successfully via Twilio Sandbox.',
+      messageSid,
+      status,
+      sentTo: testTo.replace(/\d{6}$/, '******'), // mask last 6 digits
+      contentSid,
+      testData,
+    });
+
+  } catch (err) {
+    // Safe error — never expose auth token
+    twilioCode = err.code || null;
+    errorMsg = err.message || 'Unknown Twilio error';
+
+    // Remove any potential credential leaks from error message
+    errorMsg = errorMsg.replace(/AC[a-f0-9]{32}/gi, '[ACCOUNT_SID]');
+    errorMsg = errorMsg.replace(/[a-f0-9]{32}/gi, (m) => m.length === 32 ? '[TOKEN]' : m);
+
+    await logActivity({
+      action: 'test_whatsapp_failed',
+      description: `WhatsApp test FAILED — Code: ${twilioCode} — ${errorMsg}`,
+    });
+
+    res.status(500).json({
+      success: false,
+      message: errorMsg,
+      twilioCode,
+      troubleshoot: getTroubleshootHint(twilioCode, errorMsg),
+    });
+  }
+});
+
+// Helper: human-readable troubleshooting hints for common Twilio errors
+const getTroubleshootHint = (code, message) => {
+  if (code === 20003) return 'Authentication failed. Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings.';
+  if (code === 20404) return 'Content SID not found. Verify TWILIO_CONTENT_SID is correct.';
+  if (code === 63016) return 'The recipient has not joined the WhatsApp Sandbox. Ask them to send "join <sandbox-word>" to +14155238886.';
+  if (code === 63032) return 'Template not approved or variables mismatch. Check the template variables in Twilio Console.';
+  if (code === 21211) return 'Invalid "To" phone number format. TWILIO_TEST_TO must be: whatsapp:+255XXXXXXXXX';
+  if (code === 21608) return 'The number is not enabled for WhatsApp. Make sure the recipient joined the sandbox.';
+  if (!code && message?.includes('credentials')) return 'Twilio credentials are empty. Fill TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings.';
+  return 'Check Twilio Console logs at console.twilio.com for details.';
+};

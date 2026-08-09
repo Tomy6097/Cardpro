@@ -65,6 +65,8 @@ export const invitationsAPI = {
   sendBulkSMS: (data) => api.post('/invitations/bulk-sms', data),
   sendBulkWhatsApp: (data) => api.post('/invitations/bulk-whatsapp', data),
   getStats: (eventId) => api.get(`/invitations/stats/${eventId}`),
+  testWhatsApp: (data) => api.post('/invitations/test-whatsapp', data),
+  inspectTemplate: () => api.get('/invitations/inspect-template'),
 };
 
 // RSVP
