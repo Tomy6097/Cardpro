@@ -83,13 +83,62 @@ const sendTwilioWhatsApp = async (phone, message, settings) => {
   const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
   const authToken = settings?.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN;
   const from = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured.');
+  }
 
   const client = twilio(accountSid, authToken);
-  return client.messages.create({
+
+  // If Content SID is set — use template (recommended for WhatsApp Business)
+  if (contentSid) {
+    // Extract values from the interpolated message is not possible in reverse
+    // so we pass message as plain body fallback — but for template we need guest/event data
+    // This path is used by sendWhatsAppTemplate() below
+    return client.messages.create({ from, to: `whatsapp:+${phone}`, body: message });
+  }
+
+  return client.messages.create({ from, to: `whatsapp:+${phone}`, body: message });
+};
+
+// --- WhatsApp via Twilio Content Template (with real guest/event data) ---
+const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => {
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
+  }
+  if (!from) {
+    throw new Error('TWILIO_WHATSAPP_FROM not configured.');
+  }
+
+  const client = twilio(accountSid, authToken);
+  const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
+
+  // Build content variables from real guest/event data
+  // Maps to cardpro_invitation template variables {{1}}...{{7}}
+  const contentVariables = {
+    '1': guest.guestName,
+    '2': event.name,
+    '3': formatDate(event.date) + (event.time ? ` saa ${event.time}` : ''),
+    '4': event.venue,
+    '5': event.dressCode || 'Mavazi ya heshima',
+    '6': confirmUrl,
+    '7': guest.verificationCode,
+  };
+
+  const params = {
     from,
     to: `whatsapp:+${phone}`,
-    body: message,
-  });
+    contentSid,
+    contentVariables: JSON.stringify(contentVariables),
+  };
+
+  return client.messages.create(params);
 };
 
 // --- WhatsApp via Twilio Content Template ---
@@ -159,11 +208,16 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
   if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
 
   const settings = await Settings.findOne();
-  const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
 
-  const message = interpolateTemplate(template, guest, guest.event);
-
-  await sendTwilioWhatsApp(guest.phone, message, settings);
+  // Use Content Template if available, else fall back to plain text
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+  if (contentSid && !customMessage) {
+    await sendTwilioWhatsAppWithTemplate(guest.phone, guest, guest.event, settings);
+  } else {
+    const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
+    const message = interpolateTemplate(template, guest, guest.event);
+    await sendTwilioWhatsApp(guest.phone, message, settings);
+  }
 
   guest.messageStatus = 'whatsapp_sent';
   guest.messageChannel = 'whatsapp';
@@ -230,7 +284,7 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
   const settings = await Settings.findOne();
-  const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
+  const contentSid = process.env.TWILIO_CONTENT_SID;
 
   const guestFilter = { event: eventId, isDeleted: false };
   if (filter.rsvpStatus) guestFilter.rsvpStatus = filter.rsvpStatus;
@@ -241,8 +295,14 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
 
   for (const guest of guests) {
     try {
-      const message = interpolateTemplate(template, guest, event);
-      await sendTwilioWhatsApp(guest.phone, message, settings);
+      // Use Content Template if available and no custom message override
+      if (contentSid && !customMessage) {
+        await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
+      } else {
+        const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
+        const message = interpolateTemplate(template, guest, event);
+        await sendTwilioWhatsApp(guest.phone, message, settings);
+      }
       guest.messageStatus = 'whatsapp_sent';
       guest.messageChannel = 'whatsapp';
       guest.messageSentAt = new Date();
