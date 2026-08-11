@@ -115,30 +115,33 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
   if (!from) {
     throw new Error('TWILIO_WHATSAPP_FROM not configured.');
   }
+  if (!contentSid) {
+    throw new Error('TWILIO_CONTENT_SID not configured.');
+  }
 
   const client = twilio(accountSid, authToken);
   const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
 
-  // Build content variables from real guest/event data
-  // Maps to cardpro_invitation template variables {{1}}...{{7}}
+  // Normalize phone — strip all non-digits, ensure no duplicate whatsapp: prefix
+  const cleanPhone = phone.replace(/^\+/, '').replace(/\D/g, '');
+  const toNumber = `whatsapp:+${cleanPhone}`;
+
   const contentVariables = {
     '1': guest.guestName,
     '2': event.name,
     '3': formatDate(event.date) + (event.time ? ` saa ${event.time}` : ''),
     '4': event.venue,
-    '5': event.dressCode || 'Mavazi ya heshima',
+    '5': event.dressCode || 'Smart Casual',
     '6': confirmUrl,
     '7': guest.verificationCode,
   };
 
-  const params = {
+  return client.messages.create({
     from,
-    to: `whatsapp:+${phone}`,
+    to: toNumber,
     contentSid,
     contentVariables: JSON.stringify(contentVariables),
-  };
-
-  return client.messages.create(params);
+  });
 };
 
 // --- WhatsApp via Twilio Content Template ---
@@ -208,15 +211,21 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
   if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
 
   const settings = await Settings.findOne();
-
-  // Use Content Template if available, else fall back to plain text
   const contentSid = process.env.TWILIO_CONTENT_SID;
+
   if (contentSid && !customMessage) {
+    // Use Content Template with real guest/event data
     await sendTwilioWhatsAppWithTemplate(guest.phone, guest, guest.event, settings);
   } else {
-    const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
-    const message = interpolateTemplate(template, guest, guest.event);
-    await sendTwilioWhatsApp(guest.phone, message, settings);
+    // Fall back to plain text (custom message or no template configured)
+    const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+    const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+    const template   = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
+    const message    = interpolateTemplate(template, guest, guest.event);
+    const cleanPhone = guest.phone.replace(/^\+/, '').replace(/\D/g, '');
+    const client     = twilio(accountSid, authToken);
+    await client.messages.create({ from, to: `whatsapp:+${cleanPhone}`, body: message });
   }
 
   guest.messageStatus = 'whatsapp_sent';
@@ -299,9 +308,14 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
       if (contentSid && !customMessage) {
         await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
       } else {
-        const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
-        const message = interpolateTemplate(template, guest, event);
-        await sendTwilioWhatsApp(guest.phone, message, settings);
+        const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+        const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+        const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+        const template   = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
+        const message    = interpolateTemplate(template, guest, event);
+        const cleanPhone = guest.phone.replace(/^\+/, '').replace(/\D/g, '');
+        const client     = twilio(accountSid, authToken);
+        await client.messages.create({ from, to: `whatsapp:+${cleanPhone}`, body: message });
       }
       guest.messageStatus = 'whatsapp_sent';
       guest.messageChannel = 'whatsapp';
