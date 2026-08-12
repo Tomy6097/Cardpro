@@ -10,12 +10,28 @@ import Badge from '../components/common/Badge';
 const Invitations = () => {
   const { id: eventId } = useParams();
   const [channel, setChannel] = useState('sms');
-  const [template, setTemplate] = useState('');
   const [bulkFilter, setBulkFilter] = useState('all');
-  const [mode, setMode] = useState('bulk'); // 'bulk' | 'select'
+  const [mode, setMode] = useState('bulk');
   const [selectedGuests, setSelectedGuests] = useState(new Set());
   const [guestSearch, setGuestSearch] = useState('');
   const [sendingSelected, setSendingSelected] = useState(false);
+
+  // Persist templates per channel in localStorage
+  const smsKey   = `cardpro_sms_template_${eventId}`;
+  const waKey    = `cardpro_wa_template_${eventId}`;
+  const [smsTemplate, setSmsTemplate] = useState(() => localStorage.getItem(smsKey) || '');
+  const [waTemplate,  setWaTemplate]  = useState(() => localStorage.getItem(waKey)  || '');
+
+  const template    = channel === 'sms' ? smsTemplate : waTemplate;
+  const setTemplate = (val) => {
+    if (channel === 'sms') {
+      setSmsTemplate(val);
+      localStorage.setItem(smsKey, val);
+    } else {
+      setWaTemplate(val);
+      localStorage.setItem(waKey, val);
+    }
+  };
 
   const { data: eventData } = useQuery({
     queryKey: ['event', eventId],
@@ -168,14 +184,38 @@ const Invitations = () => {
         </div>
 
         {/* Message Template */}
-        <Textarea
-          label={`Message Template (leave blank for default)`}
-          value={template}
-          onChange={e => setTemplate(e.target.value)}
-          placeholder={channel === 'sms' ? defaultSMSTemplate : defaultWATemplate}
-          rows={5}
-          style={{ marginBottom: '8px' }}
-        />
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+              Message Template
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
+                (imehifadhiwa moja kwa moja)
+              </span>
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {template && (
+                <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Imehifadhiwa
+                </span>
+              )}
+              {template && (
+                <button
+                  onClick={() => setTemplate('')}
+                  style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                >
+                  Futa template
+                </button>
+              )}
+            </div>
+          </div>
+          <Textarea
+            value={template}
+            onChange={e => setTemplate(e.target.value)}
+            placeholder={channel === 'sms' ? defaultSMSTemplate : defaultWATemplate}
+            rows={5}
+          />
+        </div>
 
         {/* Variables hint */}
         <div style={{ background: 'var(--info-light)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: 'var(--info)' }}>
