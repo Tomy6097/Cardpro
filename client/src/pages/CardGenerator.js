@@ -26,6 +26,14 @@ const CardGenerator = () => {
     queryFn: () => eventsAPI.getOne(eventId).then(r => r.data),
   });
 
+  // Card generation progress polling
+  const { data: cardProgressData } = useQuery({
+    queryKey: ['card-progress', eventId],
+    queryFn: () => cardsAPI.getProgress(eventId).then(r => r.data),
+    refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
+  });
+  const cardProgress = cardProgressData?.status === 'running' ? cardProgressData : null;
+
   useEffect(() => {
     if (eventData?.event?.cardTemplate) {
       const t = eventData.event.cardTemplate;
@@ -59,7 +67,12 @@ const CardGenerator = () => {
 
   const generateAllMutation = useMutation({
     mutationFn: () => cardsAPI.generateAll(eventId),
-    onSuccess: (r) => { toast.success(`${r.data.generated} cards regenerated with current settings.`); qc.invalidateQueries(['guests', eventId]); },
+    onSuccess: (r) => {
+      const total = r.data.total || 0;
+      toast.success(`Inatengeneza kadi ${total} kwa nyuma. Angalia maendeleo hapa chini.`);
+      qc.invalidateQueries(['guests', eventId]);
+      qc.invalidateQueries(['card-progress', eventId]);
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -140,8 +153,41 @@ const CardGenerator = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+      {/* Card Generation Progress Bar */}
+      {cardProgress && (
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--secondary)', padding: '16px 20px', marginBottom: '16px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
+                Inatengeneza kadi...
+              </span>
+            </div>
+            <span style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: 700, fontFamily: 'Poppins' }}>
+              {cardProgress.done} / {cardProgress.total} ({cardProgress.pct}%)
+            </span>
+          </div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: '8px', height: '12px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${cardProgress.pct}%`, height: '100%',
+              background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
+              borderRadius: '8px',
+              transition: 'width .6s ease',
+            }} />
+          </div>
+          {cardProgress.failed > 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--danger)', margin: '8px 0 0' }}>
+              ⚠ Kadi {cardProgress.failed} zilishindwa kutengenezwa
+            </p>
+          )}
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            Inaweza kuchukua dakika chache kulingana na idadi ya wageni
+          </p>
+          <style>{`@keyframes pulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}`}</style>
+        </div>
+      )}
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
         {/* LEFT: Preview / Edit Canvas */}
         <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '20px' }}>
 
