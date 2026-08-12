@@ -181,7 +181,11 @@ const GuestList = () => {
 
   const genQRMutation = useMutation({
     mutationFn: guestsAPI.generateAllQR,
-    onSuccess: (r) => { qc.invalidateQueries(['guests', eventId]); toast.success(`${r.data.generated} QR codes generated.`); },
+    onSuccess: (r) => {
+      qc.invalidateQueries(['guests', eventId]);
+      qc.invalidateQueries(['qr-progress', eventId]);
+      toast.success(`Inatengeneza QR codes ${r.data.total || 0} kwa nyuma. Angalia maendeleo hapa chini.`);
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -227,6 +231,14 @@ const GuestList = () => {
     refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
   });
   const cardProgress = cardProgressData?.status === 'running' ? cardProgressData : null;
+
+  // QR generation progress polling
+  const { data: qrProgressData } = useQuery({
+    queryKey: ['qr-progress', eventId],
+    queryFn: () => guestsAPI.getQRProgress(eventId).then(r => r.data),
+    refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
+  });
+  const qrProgress = qrProgressData?.status === 'running' ? qrProgressData : null;
 
   const handleImport = (e) => {
     const file = e.target.files?.[0];
@@ -348,6 +360,30 @@ const GuestList = () => {
           {cardProgress.failed > 0 && (
             <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{cardProgress.failed} kadi zilishindwa</p>
           )}
+        </div>
+      )}
+
+      {/* QR Code Generation Progress Bar */}
+      {qrProgress && (
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid #818CF8', padding: '14px 18px', marginBottom: '16px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4F46E5', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
+                Inatengeneza QR codes...
+              </span>
+            </div>
+            <span style={{ fontSize: '13px', color: '#4F46E5', fontWeight: 700 }}>
+              {qrProgress.done}/{qrProgress.total} ({qrProgress.pct}%)
+            </span>
+          </div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: '6px', height: '10px', overflow: 'hidden' }}>
+            <div style={{ width: `${qrProgress.pct}%`, height: '100%', background: 'linear-gradient(90deg, #4F46E5, #818CF8)', borderRadius: '6px', transition: 'width .5s ease' }} />
+          </div>
+          {qrProgress.failed > 0 && (
+            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{qrProgress.failed} QR zilishindwa</p>
+          )}
+          <style>{`@keyframes pulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}`}</style>
         </div>
       )}
 

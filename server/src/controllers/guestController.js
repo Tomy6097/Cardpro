@@ -550,38 +550,79 @@ exports.generateQRForGuest = asyncHandler(async (req, res) => {
   res.json({ success: true, guest });
 });
 
+// In-memory QR progress store: { eventId: { total, done, failed, status } }
+const qrGenProgress = {};
+
+exports.getQRProgress = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const progress = qrGenProgress[eventId];
+  if (!progress) {
+    return res.json({ success: true, status: 'idle', total: 0, done: 0, failed: 0, pct: 0 });
+  }
+  res.json({
+    success: true,
+    ...progress,
+    pct: progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0,
+  });
+});
+
 exports.generateAllQRCodes = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
   const event = await Event.findById(eventId);
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
   const guests = await Guest.find({ event: eventId, isDeleted: false });
-  let generated = 0;
 
-  for (const guest of guests) {
-    const token = generateQRToken(guest._id.toString(), eventId, guest.ticketType);
-    guest.qrToken = token;
-
-    const qrBuffer = await generateQRCodeBuffer(token, { size: 300 });
-    const result = await uploadToCloudinary(qrBuffer, {
-      folder: `cardpro/events/${eventId}/qrcodes`,
-      public_id: `qr_${guest._id}`,
-      format: 'png',
-    });
-
-    guest.qrCodeUrl = result.secure_url;
-    await guest.save({ validateBeforeSave: false });
-    generated++;
-  }
-
-  await logActivity({
-    event: eventId,
-    action: 'generate_qr',
-    description: `QR codes generated for ${generated} guests`,
-    req,
+  // Return immediately — process in background
+  res.json({
+    success: true,
+    total: guests.length,
+    message: `Inatengeneza QR codes ${guests.length} kwa nyuma. Angalia maendeleo.`,
   });
 
-  res.json({ success: true, generated, message: `QR codes generated for ${generated} guests.` });
+  // Init progress
+  qrGenProgress[eventId] = { status: 'running', total: guests.length, done: 0, failed: 0 };
+
+  setImmediate(async () => {
+    let generated = 0;
+    const errors = [];
+
+    for (const guest of guests) {
+      try {
+        const token = generateQRToken(guest._id.toString(), eventId, guest.ticketType);
+        guest.qrToken = token;
+
+        const qrBuffer = await generateQRCodeBuffer(token, { size: 300 });
+        const result = await uploadToCloudinary(qrBuffer, {
+          folder: `cardpro/events/${eventId}/qrcodes`,
+          public_id: `qr_${guest._id}`,
+          format: 'png',
+        });
+
+        guest.qrCodeUrl = result.secure_url;
+        await guest.save({ validateBeforeSave: false });
+        generated++;
+        qrGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
+      } catch (err) {
+        errors.push({ guest: guest.guestName, error: err.message });
+        qrGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
+        console.error(`QR gen failed for ${guest.guestName}:`, err.message);
+      }
+    }
+
+    qrGenProgress[eventId] = { status: 'done', total: guests.length, done: generated, failed: errors.length };
+
+    await logActivity({
+      event: eventId,
+      action: 'generate_qr',
+      description: `QR codes generated for ${generated}/${guests.length} guests`,
+      req: { ip: 'background', headers: {} },
+    });
+
+    console.log(`QR generation complete: ${generated}/${guests.length}`);
+    // Auto-clear after 5 minutes
+    setTimeout(() => { delete qrGenProgress[eventId]; }, 5 * 60 * 1000);
+  });
 });
 
 exports.resetGuestScan = asyncHandler(async (req, res) => {
