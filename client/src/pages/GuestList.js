@@ -2,8 +2,7 @@ import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { guestsAPI, eventsAPI, cardsAPI } from '../api';
-import toast from 'react-hot-toast';
+import { guestsAPI, eventsAPI, cardsAPI } from '../api';import toast from 'react-hot-toast';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import Input, { Select } from '../components/common/Input';
@@ -184,7 +183,8 @@ const GuestList = () => {
     onSuccess: (r) => {
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['qr-progress', eventId]);
-      toast.success(`Inatengeneza QR codes ${r.data.total || 0} kwa nyuma. Angalia maendeleo hapa chini.`);
+      const total = r.data.total || 0;
+      toast.success(`Inatengeneza QR codes ${total} kwa nyuma. Kadi zitaoneshwa baada ya QR kukamilika.`, { duration: 6000 });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -239,6 +239,22 @@ const GuestList = () => {
     refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
   });
   const qrProgress = qrProgressData?.status === 'running' ? qrProgressData : null;
+
+  // When QR generation completes — auto regenerate cards
+  const prevQrStatus = React.useRef(null);
+  React.useEffect(() => {
+    if (prevQrStatus.current === 'running' && qrProgressData?.status === 'done') {
+      toast.success('QR codes zimetengenezwa! Sasa inatengeneza kadi upya...', { duration: 4000 });
+      // Trigger card regeneration after 1s delay
+      setTimeout(() => {
+        cardsAPI.generateAll(eventId).then(() => {
+          qc.invalidateQueries(['card-progress', eventId]);
+          qc.invalidateQueries(['guests', eventId]);
+        }).catch(e => console.error('Auto card gen failed:', e.message));
+      }, 1000);
+    }
+    prevQrStatus.current = qrProgressData?.status;
+  }, [qrProgressData?.status, eventId, qc]);
 
   const handleImport = (e) => {
     const file = e.target.files?.[0];
