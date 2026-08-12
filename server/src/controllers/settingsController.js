@@ -31,7 +31,17 @@ exports.updateSettings = asyncHandler(async (req, res) => {
 
   for (const field of allowedFields) {
     if (req.body[field] !== undefined && req.body[field] !== '***masked***') {
-      settings[field] = req.body[field];
+      let val = req.body[field];
+      // Normalize WhatsApp From number
+      if (field === 'twilioWhatsappFrom' && val) {
+        val = val.trim();
+        if (!val.startsWith('whatsapp:')) {
+          val = `whatsapp:+${val.replace(/\D/g, '')}`;
+        } else {
+          val = val.replace(/\s/g, '');
+        }
+      }
+      settings[field] = val;
     }
   }
 

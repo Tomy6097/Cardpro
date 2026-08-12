@@ -122,9 +122,13 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
   const client = twilio(accountSid, authToken);
   const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
 
-  // Normalize phone — strip all non-digits, ensure no duplicate whatsapp: prefix
-  const cleanPhone = phone.replace(/^\+/, '').replace(/\D/g, '');
-  const toNumber = `whatsapp:+${cleanPhone}`;
+  // Normalize phone and from
+  const cleanPhone = phone.replace(/\D/g, '');
+  const toNumber   = `whatsapp:+${cleanPhone}`;
+  const rawFrom    = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+  const fromNumber = rawFrom.startsWith('whatsapp:')
+    ? rawFrom.replace(/\s/g, '')
+    : `whatsapp:+${rawFrom.replace(/\D/g, '')}`;
 
   const contentVariables = {
     '1': guest.guestName,
@@ -136,11 +140,20 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
     '7': guest.verificationCode,
   };
 
-  return client.messages.create({
-    from,
-    to: toNumber,
-    contentSid,
-    contentVariables: JSON.stringify(contentVariables),
+  const cvString = JSON.stringify(contentVariables);
+
+  // Use Twilio REST API directly via axios — avoids SDK contentVariables serialization issues
+  const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const params = new URLSearchParams();
+  params.append('From', fromNumber);
+  params.append('To', toNumber);
+  params.append('ContentSid', contentSid);
+  params.append('ContentVariables', cvString);
+
+  return axios.post(twilioUrl, params, {
+    auth: { username: accountSid, password: authToken },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 30000,
   });
 };
 
@@ -212,20 +225,73 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
 
   const settings = await Settings.findOne();
   const contentSid = process.env.TWILIO_CONTENT_SID;
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+
+  // Normalize FROM — always ensure it has whatsapp: prefix and no spaces
+  const rawFrom = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+  const from = rawFrom.startsWith('whatsapp:')
+    ? rawFrom.replace(/\s/g, '')
+    : `whatsapp:+${rawFrom.replace(/\D/g, '')}`;
+
+  // Normalize phone — digits only, then add whatsapp: prefix
+  const cleanPhone = guest.phone.replace(/\D/g, '');
+  const toNumber   = `whatsapp:+${cleanPhone}`;
+
+  console.log('=== WhatsApp Debug ===');
+  console.log('Guest:', guest.guestName);
+  console.log('Raw phone:', guest.phone);
+  console.log('Clean phone:', cleanPhone);
+  console.log('To:', toNumber);
+  console.log('From:', from);
+  console.log('ContentSid:', contentSid);
+  console.log('AccountSid set:', !!accountSid);
+  console.log('AuthToken set:', !!authToken);
+  console.log('=====================');
+
+  if (!accountSid || !authToken) {
+    return res.status(400).json({ success: false, message: 'Twilio credentials not configured. Go to Settings → Messaging and save your Twilio credentials.' });
+  }
+  if (!from) {
+    return res.status(400).json({ success: false, message: 'TWILIO_WHATSAPP_FROM not configured.' });
+  }
+
+  const client = twilio(accountSid, authToken);
 
   if (contentSid && !customMessage) {
-    // Use Content Template with real guest/event data
-    await sendTwilioWhatsAppWithTemplate(guest.phone, guest, guest.event, settings);
+    const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
+    const contentVariables = {
+      '1': guest.guestName,
+      '2': guest.event.name,
+      '3': formatDate(guest.event.date) + (guest.event.time ? ` · ${guest.event.time}` : ''),
+      '4': guest.event.venue,
+      '5': guest.event.dressCode || 'Smart Casual',
+      '6': confirmUrl,
+      '7': guest.verificationCode,
+    };
+
+    const cvString = JSON.stringify(contentVariables);
+    console.log('ContentVariables:', cvString);
+
+    // Use Twilio REST API directly via axios — avoids SDK contentVariables serialization bugs
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const params = new URLSearchParams();
+    params.append('From', from);
+    params.append('To', toNumber);
+    params.append('ContentSid', contentSid);
+    params.append('ContentVariables', cvString);
+
+    const response = await axios.post(twilioUrl, params, {
+      auth: { username: accountSid, password: authToken },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 30000,
+    });
+
+    console.log('Twilio response SID:', response.data?.sid, 'Status:', response.data?.status);
   } else {
-    // Fall back to plain text (custom message or no template configured)
-    const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
-    const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
-    const template   = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
-    const message    = interpolateTemplate(template, guest, guest.event);
-    const cleanPhone = guest.phone.replace(/^\+/, '').replace(/\D/g, '');
-    const client     = twilio(accountSid, authToken);
-    await client.messages.create({ from, to: `whatsapp:+${cleanPhone}`, body: message });
+    const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
+    const message  = interpolateTemplate(template, guest, guest.event);
+    await client.messages.create({ from, to: toNumber, body: message });
   }
 
   guest.messageStatus = 'whatsapp_sent';
@@ -310,10 +376,11 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
       } else {
         const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
         const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
-        const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+        const rawFrom    = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+        const from       = rawFrom.startsWith('whatsapp:') ? rawFrom.replace(/\s/g,'') : `whatsapp:+${rawFrom.replace(/\D/g,'')}`;
         const template   = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
         const message    = interpolateTemplate(template, guest, event);
-        const cleanPhone = guest.phone.replace(/^\+/, '').replace(/\D/g, '');
+        const cleanPhone = guest.phone.replace(/\D/g, '');
         const client     = twilio(accountSid, authToken);
         await client.messages.create({ from, to: `whatsapp:+${cleanPhone}`, body: message });
       }
