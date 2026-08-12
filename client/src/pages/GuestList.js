@@ -184,7 +184,7 @@ const GuestList = () => {
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['qr-progress', eventId]);
       const total = r.data.total || 0;
-      toast.success(`Inatengeneza QR codes ${total} kwa nyuma. Kadi zitaoneshwa baada ya QR kukamilika.`, { duration: 6000 });
+      toast.success(`Inatengeneza QR codes ${total} kwa nyuma.`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -239,22 +239,6 @@ const GuestList = () => {
     refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
   });
   const qrProgress = qrProgressData?.status === 'running' ? qrProgressData : null;
-
-  // When QR generation completes — auto regenerate cards
-  const prevQrStatus = React.useRef(null);
-  React.useEffect(() => {
-    if (prevQrStatus.current === 'running' && qrProgressData?.status === 'done') {
-      toast.success('QR codes zimetengenezwa! Sasa inatengeneza kadi upya...', { duration: 4000 });
-      // Trigger card regeneration after 1s delay
-      setTimeout(() => {
-        cardsAPI.generateAll(eventId).then(() => {
-          qc.invalidateQueries(['card-progress', eventId]);
-          qc.invalidateQueries(['guests', eventId]);
-        }).catch(e => console.error('Auto card gen failed:', e.message));
-      }, 1000);
-    }
-    prevQrStatus.current = qrProgressData?.status;
-  }, [qrProgressData?.status, eventId, qc]);
 
   const handleImport = (e) => {
     const file = e.target.files?.[0];
@@ -400,6 +384,19 @@ const GuestList = () => {
             <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{qrProgress.failed} QR zilishindwa</p>
           )}
           <style>{`@keyframes pulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}`}</style>
+        </div>
+      )}
+
+      {/* Reminder after QR done — go to CardGenerator */}
+      {qrProgressData?.status === 'done' && !cardProgress && (
+        <div style={{ background: '#EEF2FF', borderRadius: 'var(--radius)', border: '1px solid #C7D2FE', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span style={{ fontSize: '13px', color: '#3730A3', fontWeight: 500 }}>QR codes zimetengenezwa. Nenda Card Generator ili update kadi.</span>
+          </div>
+          <a href={`/events/${eventId}/cards`} style={{ padding: '5px 14px', background: '#4F46E5', color: 'white', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            Tengeneza Kadi
+          </a>
         </div>
       )}
 
