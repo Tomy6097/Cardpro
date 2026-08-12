@@ -183,11 +183,28 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
 
   const guests = await Guest.find({ event: eventId, isDeleted: false });
 
+  // Block card generation if no guests have QR tokens yet
+  const guestsWithQR = guests.filter(g => g.qrToken);
+  if (guestsWithQR.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Wageni hawana QR codes bado. Tafadhali tengeneza QR codes kwanza kabla ya kadi.',
+      hint: 'Bonyeza "Generate QR Codes" kwenye Guest List kwanza.',
+    });
+  }
+
+  const guestsWithoutQR = guests.filter(g => !g.qrToken).length;
+  if (guestsWithoutQR > 0) {
+    console.warn(`Warning: ${guestsWithoutQR}/${guests.length} guests have no QR token — their cards will not have QR codes.`);
+  }
+
   // Return immediately — process in background
   res.json({
     success: true,
-    message: `Generating ${guests.length} cards in background. Refresh guest list in a few minutes.`,
+    message: `Inatengeneza kadi ${guests.length} kwa nyuma. Angalia maendeleo.`,
     total: guests.length,
+    withQR: guestsWithQR.length,
+    withoutQR: guests.length - guestsWithQR.length,
   });
 
   // Init progress

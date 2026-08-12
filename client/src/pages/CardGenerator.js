@@ -34,6 +34,13 @@ const CardGenerator = () => {
   });
   const cardProgress = cardProgressData?.status === 'running' ? cardProgressData : null;
 
+  // Check if guests have QR tokens (needed before generating cards)
+  const { data: statsData } = useQuery({
+    queryKey: ['event-stats', eventId],
+    queryFn: () => eventsAPI.getStats(eventId).then(r => r.data),
+  });
+  const totalGuests = statsData?.stats?.total || 0;
+
   useEffect(() => {
     if (eventData?.event?.cardTemplate) {
       const t = eventData.event.cardTemplate;
@@ -68,12 +75,22 @@ const CardGenerator = () => {
   const generateAllMutation = useMutation({
     mutationFn: () => cardsAPI.generateAll(eventId),
     onSuccess: (r) => {
-      const total = r.data.total || 0;
-      toast.success(`Inatengeneza kadi ${total} kwa nyuma. Angalia maendeleo hapa chini.`);
+      const total   = r.data.total    || 0;
+      const withoutQR = r.data.withoutQR || 0;
+      if (withoutQR > 0) {
+        toast(`Inatengeneza kadi ${total}. Wageni ${withoutQR} hawana QR — kadi zao hazitakuwa na QR code.`, { icon: '⚠️', duration: 6000 });
+      } else {
+        toast.success(`Inatengeneza kadi ${total} kwa nyuma. Angalia maendeleo hapa chini.`);
+      }
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['card-progress', eventId]);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      const msg = err.response?.data?.hint
+        ? `${err.response.data.message}\n${err.response.data.hint}`
+        : err.response?.data?.message || err.message;
+      toast.error(msg, { duration: 7000 });
+    },
   });
 
   const handleTemplateUpload = (e) => {
@@ -146,9 +163,20 @@ const CardGenerator = () => {
             </button>
           )}
           {template?.url && (
-            <Button variant="primary" onClick={() => generateAllMutation.mutate()} loading={generateAllMutation.isPending}>
-              Generate All Cards
-            </Button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+              <Button
+                variant="primary"
+                onClick={() => generateAllMutation.mutate()}
+                loading={generateAllMutation.isPending}
+              >
+                Generate All Cards
+              </Button>
+              {totalGuests > 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter' }}>
+                  Wageni: {totalGuests} · Hakikisha QR codes zimegenerated kwanza
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
