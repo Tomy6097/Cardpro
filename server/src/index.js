@@ -85,11 +85,17 @@ const authLimiter = rateLimit({
 });
 
 // Invitation rate limiting — prevent accidental double-sends
+// Limits: max 20 send-requests per 15 minutes per user
+// (each request can send to ALL guests — this just prevents button-spam)
 const invitationLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,   // 5 minutes
-  max: 10,                    // max 10 bulk sends per 5 min per IP
-  message: { success: false, message: 'Umesend mara nyingi sana. Subiri dakika 5 kisha jaribu tena.' },
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 20,                    // max 20 send actions per 15 min
+  message: { success: false, message: 'Umesend mara nyingi sana. Subiri dakika 15 kisha jaribu tena.' },
   keyGenerator: (req) => req.ip + (req.user?._id || ''),
+  skip: (req) => {
+    // Only rate-limit bulk sends, not single guest sends
+    return req.path.includes('bulk') === false;
+  },
 });
 
 // Routes
