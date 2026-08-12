@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { activityAPI, eventsAPI } from '../api';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const actionColors = {
   login: '#2D6A4F', logout: '#6B7280',
@@ -30,6 +31,8 @@ const ActionBadge = ({ action }) => {
 const ActivityLog = () => {
   const { id: eventId } = useParams();
   const [page, setPage] = useState(1);
+  const [cleanupDays, setCleanupDays] = useState(30);
+  const qc = useQueryClient();
 
   const { data: eventData } = useQuery({
     queryKey: ['event', eventId],
@@ -37,7 +40,7 @@ const ActivityLog = () => {
     enabled: !!eventId,
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['activity', eventId, page],
     queryFn: () => eventId
       ? activityAPI.getEventLogs(eventId, { page, limit: 50 }).then(r => r.data)
@@ -45,9 +48,31 @@ const ActivityLog = () => {
     keepPreviousData: true,
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ['activity-stats'],
+    queryFn: () => activityAPI.getLogStats().then(r => r.data),
+    enabled: !eventId, // only on global log page
+  });
+
+  const cleanupMutation = useMutation({
+    mutationFn: (days) => activityAPI.cleanupLogs(days),
+    onSuccess: (r) => {
+      toast.success(r.data.message);
+      refetch();
+      qc.invalidateQueries(['activity-stats']);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleCleanup = () => {
+    if (!window.confirm(`Futa logs zote zaidi ya siku ${cleanupDays}? Haiwezi kurudishwa.`)) return;
+    cleanupMutation.mutate(cleanupDays);
+  };
+
   const logs = data?.logs || [];
   const pagination = data?.pagination || {};
   const ev = eventData?.event;
+  const logStats = statsData?.stats;
 
   return (
     <div className="page-container fade-in">
@@ -61,15 +86,50 @@ const ActivityLog = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontFamily: 'Poppins', fontSize: '22px', fontWeight: 700, color: 'var(--primary-dark)', margin: 0 }}>
             {eventId ? 'Event Activity Log' : 'System Activity Log'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>
-            {pagination.total || 0} total records
+            {pagination.total || 0} records
+            {logStats && (
+              <span style={{ marginLeft: '10px' }}>
+                · ~{logStats.estimatedStorageKB} KB
+                · <span style={{ color: 'var(--success)' }}>Auto-delete after {logStats.ttlDays} days</span>
+                {logStats.oldestLog && (
+                  <span> · Oldest: {format(new Date(logStats.oldestLog), 'MMM d, yyyy')}</span>
+                )}
+              </span>
+            )}
           </p>
         </div>
+
+        {/* Manual cleanup — only on global log page */}
+        {!eventId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, background: 'var(--cream)', padding: '10px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border-light)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Futa logs za zaidi ya</span>
+            <select
+              value={cleanupDays}
+              onChange={e => setCleanupDays(Number(e.target.value))}
+              style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none', background: 'var(--white)', cursor: 'pointer' }}
+            >
+              {[7, 14, 30, 60, 90].map(d => (
+                <option key={d} value={d}>Siku {d}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleCleanup}
+              disabled={cleanupMutation.isPending}
+              style={{ padding: '5px 14px', background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 600, cursor: cleanupMutation.isPending ? 'not-allowed' : 'pointer', fontFamily: 'Inter', opacity: cleanupMutation.isPending ? 0.6 : 1 }}
+            >
+              {cleanupMutation.isPending ? 'Inafuta...' : 'Futa'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>

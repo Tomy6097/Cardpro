@@ -25,7 +25,9 @@ const activityLogSchema = new mongoose.Schema({
       'rsvp_confirm', 'rsvp_decline',
       'download_pdf', 'download_csv',
       'update_settings', 'create_scanner', 'delete_scanner',
-      'upload_template', 'upload_video',
+      'upload_template', 'upload_video', 'delete_video',
+      'test_whatsapp', 'test_whatsapp_failed',
+      'cleanup_logs', 'reset_scan',
     ],
   },
   description: String,
@@ -38,5 +40,9 @@ activityLogSchema.index({ event: 1, createdAt: -1 });
 activityLogSchema.index({ user: 1, createdAt: -1 });
 activityLogSchema.index({ action: 1 });
 activityLogSchema.index({ createdAt: -1 });
+
+// TTL Index — auto-delete logs older than 30 days
+// MongoDB background job runs every ~60 seconds and deletes expired docs
+activityLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 }); // 30 days
 
 module.exports = mongoose.model('ActivityLog', activityLogSchema);

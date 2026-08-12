@@ -88,6 +88,8 @@ export const scannerAPI = {
 export const activityAPI = {
   getLogs: (params) => api.get('/activity', { params }),
   getEventLogs: (eventId, params) => api.get(`/activity/event/${eventId}`, { params }),
+  getLogStats: () => api.get('/activity/stats'),
+  cleanupLogs: (days) => api.delete(`/activity/cleanup`, { params: { days } }),
 };
 
 // Settings
