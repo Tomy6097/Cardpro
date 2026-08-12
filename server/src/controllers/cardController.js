@@ -7,6 +7,22 @@ const { logActivity } = require('../utils/activityLogger');
 const { asyncHandler } = require('../middleware/errorHandler');
 const axios = require('axios');
 
+// In-memory progress store: { eventId: { total, done, failed, status } }
+const cardGenProgress = {};
+
+exports.getCardProgress = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const progress = cardGenProgress[eventId];
+  if (!progress) {
+    return res.json({ success: true, status: 'idle', total: 0, done: 0, failed: 0, pct: 0 });
+  }
+  res.json({
+    success: true,
+    ...progress,
+    pct: progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0,
+  });
+});
+
 const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#FFFFFF');
   return result ? {
@@ -174,6 +190,9 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
     total: guests.length,
   });
 
+  // Init progress
+  cardGenProgress[eventId] = { status: 'running', total: guests.length, done: 0, failed: 0 };
+
   // Process in background after response
   setImmediate(async () => {
     let generated = 0;
@@ -249,13 +268,18 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
         guest.cardPublicId = result.public_id;
         await guest.save({ validateBeforeSave: false });
         generated++;
+        cardGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
       } catch (err) {
         errors.push({ guest: guest.guestName, error: err.message });
+        cardGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
         console.error(`Card gen failed for ${guest.guestName}:`, err.message);
       }
     }
 
+    cardGenProgress[eventId] = { status: 'done', total: guests.length, done: generated, failed: errors.length };
     console.log(`Card generation complete: ${generated}/${guests.length} generated, ${errors.length} errors`);
+    // Auto-clear progress after 5 minutes
+    setTimeout(() => { delete cardGenProgress[eventId]; }, 5 * 60 * 1000);
   });
 });
 

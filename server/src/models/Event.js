@@ -65,6 +65,9 @@ const eventSchema = new mongoose.Schema({
     fontStyle: { type: String, default: 'serif' },
   },
 
+  // RSVP Deadline — guests cannot confirm/decline after this date
+  rsvpDeadline: { type: Date, default: null },
+
   // Dress Code Images
   dressCodeImages: [{
     url: { type: String },

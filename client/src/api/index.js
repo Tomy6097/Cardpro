@@ -55,6 +55,7 @@ export const guestsAPI = {
 export const cardsAPI = {
   generate: (id) => api.post(`/cards/generate/${id}`),
   generateAll: (eventId) => api.post(`/cards/generate-all/${eventId}`),
+  getProgress: (eventId) => api.get(`/cards/progress/${eventId}`),
   download: (id) => api.get(`/cards/download/${id}`),
 };
 
@@ -74,6 +75,7 @@ export const rsvpAPI = {
   confirm: (code) => api.post(`/rsvp/confirm/${code}`),
   decline: (code) => api.post(`/rsvp/decline/${code}`),
   getStats: (eventId) => api.get(`/rsvp/stats/${eventId}`),
+  getRecentCount: () => api.get('/rsvp/recent-count'),
 };
 
 // Scanner

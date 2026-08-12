@@ -84,12 +84,20 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts, please try again later.' },
 });
 
+// Invitation rate limiting — prevent accidental double-sends
+const invitationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,   // 5 minutes
+  max: 10,                    // max 10 bulk sends per 5 min per IP
+  message: { success: false, message: 'Umesend mara nyingi sana. Subiri dakika 5 kisha jaribu tena.' },
+  keyGenerator: (req) => req.ip + (req.user?._id || ''),
+});
+
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/scanner', scannerRoutes);
-app.use('/api/invitations', invitationRoutes);
+app.use('/api/invitations', invitationLimiter, invitationRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/activity', activityRoutes);

@@ -2,12 +2,22 @@ import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { guestsAPI, eventsAPI } from '../api';
+import { guestsAPI, eventsAPI, cardsAPI } from '../api';
 import toast from 'react-hot-toast';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import Input, { Select } from '../components/common/Input';
 import Button from '../components/common/Button';
+
+// Phone validation — Tanzania & international
+const validatePhone = (phone) => {
+  const clean = phone.replace(/\s/g, '');
+  // Tanzania: 255XXXXXXXXX (12 digits) or 07XXXXXXXX / 06XXXXXXXX
+  const tzLocal = /^0[67]\d{8}$/.test(clean);
+  const tzIntl  = /^255[67]\d{8}$/.test(clean);
+  const intl    = /^\+?\d{10,15}$/.test(clean);
+  return tzLocal || tzIntl || intl;
+};
 
 const ticketOptions = [
   { value: 'Single', label: 'Single' }, { value: 'Double', label: 'Double' },
@@ -16,6 +26,7 @@ const ticketOptions = [
 ];
 
 const emptyForm = { guestName: '', phone: '', email: '', ticketType: 'Single', tableNumber: '', notes: '' };
+const emptyEditForm = { guestName: '', phone: '', email: '', ticketType: 'Single', tableNumber: '', notes: '' };
 
 // Card Preview Popup Component
 const CardPreviewModal = ({ guest, onClose }) => {
@@ -125,6 +136,11 @@ const GuestList = () => {
   const [form, setForm] = useState(emptyForm);
   const [selected, setSelected] = useState(new Set());
   const [previewGuest, setPreviewGuest] = useState(null);
+  const [editModal, setEditModal] = useState(false);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editGuest, setEditGuest] = useState(null);
+  const [scanHistoryGuest, setScanHistoryGuest] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const { data: eventData } = useQuery({
     queryKey: ['event', eventId],
@@ -193,6 +209,25 @@ const GuestList = () => {
     onError: (err) => toast.error(err.message),
   });
 
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }) => guestsAPI.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries(['guests', eventId]);
+      toast.success('Taarifa za mgeni zimebadilishwa.');
+      setEditModal(false);
+      setEditGuest(null);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || err.message),
+  });
+
+  // Card generation progress polling
+  const { data: cardProgressData } = useQuery({
+    queryKey: ['card-progress', eventId],
+    queryFn: () => cardsAPI.getProgress(eventId).then(r => r.data),
+    refetchInterval: (data) => data?.status === 'running' ? 2000 : false,
+  });
+  const cardProgress = cardProgressData?.status === 'running' ? cardProgressData : null;
+
   const handleImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -200,6 +235,32 @@ const GuestList = () => {
     fd.append('csv', file);
     importMutation.mutate({ fd });
     e.target.value = '';
+  };
+
+  const openEditModal = (g) => {
+    setEditGuest(g);
+    setEditForm({ guestName: g.guestName, phone: g.phone, email: g.email || '', ticketType: g.ticketType, tableNumber: g.tableNumber || '', notes: g.notes || '' });
+    setFormErrors({});
+    setEditModal(true);
+  };
+
+  const handleAddGuest = () => {
+    const errors = {};
+    if (!form.guestName.trim()) errors.guestName = 'Jina linahitajika';
+    if (!form.phone.trim()) errors.phone = 'Namba ya simu inahitajika';
+    else if (!validatePhone(form.phone)) errors.phone = 'Namba ya simu si sahihi (mfano: 0754696878 au 255754696878)';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormErrors({});
+    addMutation.mutate(form);
+  };
+
+  const handleEditGuest = () => {
+    const errors = {};
+    if (!editForm.guestName.trim()) errors.guestName = 'Jina linahitajika';
+    if (editForm.phone && !validatePhone(editForm.phone)) errors.phone = 'Namba ya simu si sahihi';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    setFormErrors({});
+    editMutation.mutate({ id: editGuest._id, data: editForm });
   };
 
   const handleDownloadCSV = async () => {
@@ -266,6 +327,29 @@ const GuestList = () => {
           </Button>
         </div>
       </div>
+
+      {/* Card Generation Progress Bar */}
+      {cardProgress && (
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--secondary)', padding: '14px 18px', marginBottom: '16px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C9A84C', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
+                Inatengeneza kadi...
+              </span>
+            </div>
+            <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 700 }}>
+              {cardProgress.done}/{cardProgress.total} ({cardProgress.pct}%)
+            </span>
+          </div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: '6px', height: '10px', overflow: 'hidden' }}>
+            <div style={{ width: `${cardProgress.pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))', borderRadius: '6px', transition: 'width .5s ease' }} />
+          </div>
+          {cardProgress.failed > 0 && (
+            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{cardProgress.failed} kadi zilishindwa</p>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -349,6 +433,28 @@ const GuestList = () => {
                         Card
                       </button>
 
+                      {/* Edit button */}
+                      <button
+                        onClick={() => openEditModal(g)}
+                        style={{ padding: '4px 10px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: '#4338CA', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Edit Guest"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+
+                      {/* Scan history button */}
+                      {(g.scanHistory?.length > 0 || g.scanStatus === 'scanned') && (
+                        <button
+                          onClick={() => setScanHistoryGuest(g)}
+                          style={{ padding: '4px 10px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: '#166534', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Scan History"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          Historia
+                        </button>
+                      )}
+
                       {/* Preview as Guest — opens invitation website */}
                       {event?.slug && g.verificationCode && (
                         <a
@@ -420,28 +526,110 @@ const GuestList = () => {
       </div>
 
       {/* Add Guest Modal */}
-      <Modal isOpen={addModal} onClose={() => setAddModal(false)} title="Add Guest" width="480px" offsetTop={48}
+      <Modal isOpen={addModal} onClose={() => { setAddModal(false); setFormErrors({}); }} title="Ongeza Mgeni" width="480px" offsetTop={48}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setAddModal(false)}>Cancel</Button>
-            <Button variant="primary" loading={addMutation.isPending} onClick={() => addMutation.mutate(form)}>Add Guest</Button>
+            <Button variant="secondary" onClick={() => { setAddModal(false); setFormErrors({}); }}>Ghairi</Button>
+            <Button variant="primary" loading={addMutation.isPending} onClick={handleAddGuest}>Ongeza Mgeni</Button>
           </>
         }
       >
-        <Input label="Guest Name" name="guestName" value={form.guestName} onChange={e => setForm(p => ({ ...p, guestName: e.target.value }))} required />
+        <div>
+          <Input label="Jina la Mgeni *" name="guestName" value={form.guestName} onChange={e => { setForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
+          {formErrors.guestName && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.guestName}</p>}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-          <Input label="Phone Number" name="phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} required placeholder="0754696878" />
-          <Select label="Ticket Type" name="ticketType" value={form.ticketType}
+          <div>
+            <Input label="Namba ya Simu *" name="phone" value={form.phone} onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} required placeholder="0754696878" />
+            {formErrors.phone && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.phone}</p>}
+          </div>
+          <Select label="Aina ya Tiketi" name="ticketType" value={form.ticketType}
             onChange={e => setForm(p => ({ ...p, ticketType: e.target.value }))}
             options={ticketOptions}
           />
         </div>
-        <Input label="Email (optional)" name="email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+        <Input label="Barua Pepe (si lazima)" name="email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-          <Input label="Table Number" name="tableNumber" value={form.tableNumber} onChange={e => setForm(p => ({ ...p, tableNumber: e.target.value }))} />
-          <Input label="Notes" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          <Input label="Nambari ya Meza" name="tableNumber" value={form.tableNumber} onChange={e => setForm(p => ({ ...p, tableNumber: e.target.value }))} />
+          <Input label="Maelezo" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
       </Modal>
+
+      {/* Edit Guest Modal */}
+      <Modal isOpen={editModal} onClose={() => { setEditModal(false); setFormErrors({}); }} title={`Badilisha: ${editGuest?.guestName || ''}`} width="480px" offsetTop={48}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setEditModal(false); setFormErrors({}); }}>Ghairi</Button>
+            <Button variant="primary" loading={editMutation.isPending} onClick={handleEditGuest}>Hifadhi Mabadiliko</Button>
+          </>
+        }
+      >
+        <div>
+          <Input label="Jina la Mgeni *" name="guestName" value={editForm.guestName} onChange={e => { setEditForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
+          {formErrors.guestName && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.guestName}</p>}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+          <div>
+            <Input label="Namba ya Simu" name="phone" value={editForm.phone} onChange={e => { setEditForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} placeholder="0754696878" />
+            {formErrors.phone && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.phone}</p>}
+          </div>
+          <Select label="Aina ya Tiketi" name="ticketType" value={editForm.ticketType}
+            onChange={e => setEditForm(p => ({ ...p, ticketType: e.target.value }))}
+            options={ticketOptions}
+          />
+        </div>
+        <Input label="Barua Pepe (si lazima)" name="email" type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+          <Input label="Nambari ya Meza" name="tableNumber" value={editForm.tableNumber} onChange={e => setEditForm(p => ({ ...p, tableNumber: e.target.value }))} />
+          <Input label="Maelezo" name="notes" value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
+        </div>
+      </Modal>
+
+      {/* Scan History Modal */}
+      {scanHistoryGuest && ReactDOM.createPortal(
+        <>
+          <div onClick={() => setScanHistoryGuest(null)} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,10,0,0.7)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', pointerEvents: 'none' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(480px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', overflow: 'hidden', pointerEvents: 'all', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>Historia ya Scan</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', margin: '2px 0 0' }}>{scanHistoryGuest.guestName} · {scanHistoryGuest.ticketType}</p>
+                </div>
+                <button onClick={() => setScanHistoryGuest(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div style={{ padding: '16px', overflowY: 'auto' }}>
+                {(!scanHistoryGuest.scanHistory || scanHistoryGuest.scanHistory.length === 0) ? (
+                  <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '10px', opacity: 0.4 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <p style={{ fontSize: '13px', margin: 0 }}>Hakuna historia ya scan</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {scanHistoryGuest.scanHistory.map((s, i) => (
+                      <div key={i} style={{ padding: '12px 14px', background: 'var(--cream)', borderRadius: 'var(--radius)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ fontWeight: 600, fontSize: '13px', color: 'var(--primary-dark)', margin: '0 0 3px' }}>
+                            Ingizo #{s.entryNumber || i + 1}
+                          </p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                            {s.scannedAt ? new Date(s.scannedAt).toLocaleString('sw-TZ', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                          </p>
+                          {s.scannerName && <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>Scanner: {s.scannerName}</p>}
+                        </div>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
 
       {/* Card Preview Popup */}
       <CardPreviewModal guest={previewGuest} onClose={() => setPreviewGuest(null)} />

@@ -370,7 +370,6 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
 
   for (const guest of guests) {
     try {
-      // Use Content Template if available and no custom message override
       if (contentSid && !customMessage) {
         await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
       } else {
@@ -389,6 +388,11 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
       guest.messageSentAt = new Date();
       await guest.save({ validateBeforeSave: false });
       results.sent++;
+
+      // Delay 1.2s between messages to avoid Twilio rate limits
+      if (results.sent < guests.length) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
     } catch (err) {
       results.failed++;
       results.errors.push({ guest: guest.guestName, error: err.message });

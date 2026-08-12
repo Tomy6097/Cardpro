@@ -18,7 +18,7 @@ const activityLogSchema = new mongoose.Schema({
     enum: [
       'login', 'logout',
       'create_event', 'update_event', 'delete_event',
-      'add_guest', 'import_guests', 'delete_guest', 'restore_guest', 'delete_all_guests', 'restore_all_guests',
+      'add_guest', 'import_guests', 'update_guest', 'delete_guest', 'restore_guest', 'delete_all_guests', 'restore_all_guests',
       'generate_qr', 'generate_card', 'generate_all_cards',
       'send_sms', 'send_whatsapp', 'send_bulk_sms', 'send_bulk_whatsapp',
       'scan_entry', 'scan_duplicate', 'scan_invalid',

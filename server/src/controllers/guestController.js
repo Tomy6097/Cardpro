@@ -401,8 +401,47 @@ exports.getGuest = asyncHandler(async (req, res) => {
 });
 
 exports.updateGuest = asyncHandler(async (req, res) => {
-  const guest = await Guest.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+  const { guestName, phone, email, ticketType, tableNumber, seatNumber, notes } = req.body;
+
+  const guest = await Guest.findById(req.params.id);
   if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
+
+  // If phone changed, check for duplicate name+phone
+  if (phone) {
+    const { normalizePhone } = require('../utils/phoneUtils');
+    const normalizedPhone = normalizePhone(phone);
+    if (normalizedPhone && normalizedPhone !== guest.phone) {
+      const nameToCheck = guestName?.trim() || guest.guestName;
+      const conflict = await Guest.findOne({
+        event: guest.event,
+        phone: normalizedPhone,
+        guestName: { $regex: `^${nameToCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+        isDeleted: false,
+        _id: { $ne: guest._id },
+      });
+      if (conflict) {
+        return res.status(400).json({ success: false, message: 'Mgeni mwenye jina na namba hiyo tayari yupo.' });
+      }
+      guest.phone = normalizedPhone;
+    }
+  }
+
+  if (guestName?.trim()) guest.guestName = guestName.trim();
+  if (email !== undefined) guest.email = email;
+  if (ticketType) guest.ticketType = ticketType;
+  if (tableNumber !== undefined) guest.tableNumber = tableNumber;
+  if (seatNumber !== undefined) guest.seatNumber = seatNumber;
+  if (notes !== undefined) guest.notes = notes;
+
+  await guest.save({ validateBeforeSave: false });
+
+  await logActivity({
+    event: guest.event,
+    action: 'update_guest',
+    description: `Guest "${guest.guestName}" updated`,
+    req,
+  });
+
   res.json({ success: true, guest });
 });
 

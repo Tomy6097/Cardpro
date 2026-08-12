@@ -9,6 +9,15 @@ exports.confirmRSVP = asyncHandler(async (req, res) => {
   const guest = await Guest.findOne({ verificationCode, isDeleted: false }).populate('event');
   if (!guest) return res.status(404).json({ success: false, message: 'Invalid verification code.' });
 
+  // Check RSVP deadline
+  if (guest.event?.rsvpDeadline && new Date() > new Date(guest.event.rsvpDeadline)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Muda wa kuthibitisha mahudhurio umepita. Tafadhali wasiliana na mpangaji wa tukio.',
+      deadlinePassed: true,
+    });
+  }
+
   if (guest.rsvpStatus === 'confirmed') {
     return res.json({
       success: true,
@@ -52,10 +61,19 @@ exports.confirmRSVP = asyncHandler(async (req, res) => {
 
 exports.declineRSVP = asyncHandler(async (req, res) => {
   const { verificationCode } = req.params;
-  const { reason } = req.body; // optional decline reason
+  const { reason } = req.body;
 
   const guest = await Guest.findOne({ verificationCode, isDeleted: false }).populate('event');
   if (!guest) return res.status(404).json({ success: false, message: 'Invalid verification code.' });
+
+  // Check RSVP deadline
+  if (guest.event?.rsvpDeadline && new Date() > new Date(guest.event.rsvpDeadline)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Muda wa kuthibitisha mahudhurio umepita.',
+      deadlinePassed: true,
+    });
+  }
 
   guest.rsvpStatus = 'declined';
   guest.rsvpAt = new Date();
@@ -95,4 +113,15 @@ exports.getRSVPStats = asyncHandler(async (req, res) => {
       confirmedPct, pendingPct, declinedPct,
     },
   });
+});
+
+// Count new RSVPs (confirmed + declined) in last 24 hours — for sidebar notification badge
+exports.getRecentRSVPCount = asyncHandler(async (req, res) => {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const newCount = await Guest.countDocuments({
+    isDeleted: false,
+    rsvpStatus: { $in: ['confirmed', 'declined'] },
+    rsvpAt: { $gte: since },
+  });
+  res.json({ success: true, newCount });
 });

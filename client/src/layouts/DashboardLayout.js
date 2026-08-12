@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { settingsAPI } from '../api';
+import { settingsAPI, rsvpAPI } from '../api';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
-const NavItem = ({ to, icon: Icon, label, collapsed }) => (
+// NavItem with optional badge
+const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink to={to} style={{ textDecoration: 'none' }}>
     {({ isActive }) => (
       <div style={{
@@ -17,12 +19,36 @@ const NavItem = ({ to, icon: Icon, label, collapsed }) => (
         cursor: 'pointer',
         justifyContent: collapsed ? 'center' : 'flex-start',
         marginBottom: '2px',
+        position: 'relative',
       }}
       onMouseEnter={e => { if (!e.currentTarget.querySelector('[data-active]')) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
       onMouseLeave={e => { if (!e.currentTarget.querySelector('[data-active]')) e.currentTarget.style.background = isActive ? 'rgba(201,168,76,0.15)' : 'transparent'; }}
       >
-        <Icon size={18} style={{ flexShrink: 0 }} />
-        {!collapsed && <span style={{ fontSize: '14px', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>{label}</span>}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Icon size={18} />
+          {badge > 0 && (
+            <span style={{
+              position: 'absolute', top: '-6px', right: '-8px',
+              background: '#EF4444', color: 'white',
+              fontSize: '9px', fontWeight: 700, fontFamily: 'Inter',
+              minWidth: '16px', height: '16px', borderRadius: '8px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 3px', lineHeight: 1,
+            }}>
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+        </div>
+        {!collapsed && <span style={{ fontSize: '14px', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap', flex: 1 }}>{label}</span>}
+        {!collapsed && badge > 0 && (
+          <span style={{
+            background: '#EF4444', color: 'white',
+            fontSize: '10px', fontWeight: 700, padding: '1px 6px',
+            borderRadius: '10px', fontFamily: 'Inter',
+          }}>
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
       </div>
     )}
   </NavLink>
@@ -53,6 +79,15 @@ const DashboardLayout = () => {
   const [companyLogo, setCompanyLogo] = useState(null);
   const [companyName, setCompanyName] = useState('Cardpro');
 
+  // Notification: count new RSVPs (confirmed + declined) in last 24h across all events
+  const { data: notifData } = useQuery({
+    queryKey: ['rsvp-notifications'],
+    queryFn: () => rsvpAPI.getRecentCount().then(r => r.data),
+    refetchInterval: 60000, // every minute
+    retry: false,
+  });
+  const rsvpBadge = notifData?.newCount || 0;
+
   useEffect(() => {
     // Check cache first
     try {
@@ -80,7 +115,7 @@ const DashboardLayout = () => {
 
   const navItems = [
     { to: '/dashboard', icon: (p) => <Icon name="Dashboard" {...p} />, label: 'Dashboard' },
-    { to: '/events', icon: (p) => <Icon name="Events" {...p} />, label: 'Events' },
+    { to: '/events', icon: (p) => <Icon name="Events" {...p} />, label: 'Events', badge: rsvpBadge },
     { to: '/activity', icon: (p) => <Icon name="Activity" {...p} />, label: 'Activity Log' },
     { to: '/settings', icon: (p) => <Icon name="Settings" {...p} />, label: 'Settings' },
   ];
