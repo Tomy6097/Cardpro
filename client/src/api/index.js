@@ -55,7 +55,7 @@ export const guestsAPI = {
 // Cards
 export const cardsAPI = {
   generate: (id) => api.post(`/cards/generate/${id}`),
-  generateAll: (eventId) => api.post(`/cards/generate-all/${eventId}`),
+  generateAll: (eventId, newOnly = false) => api.post(`/cards/generate-all/${eventId}?newOnly=${newOnly}`),
   getProgress: (eventId) => api.get(`/cards/progress/${eventId}`),
   download: (id) => api.get(`/cards/download/${id}`),
 };

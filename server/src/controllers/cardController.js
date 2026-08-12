@@ -181,7 +181,22 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No card template uploaded.' });
   }
 
-  const guests = await Guest.find({ event: eventId, isDeleted: false });
+  // Support ?newOnly=true to only generate cards for guests without existing cards
+  const newOnly = req.query.newOnly === 'true';
+
+  const filter = { event: eventId, isDeleted: false };
+  if (newOnly) {
+    filter.$or = [
+      { cardUrl: { $exists: false } },
+      { cardUrl: null },
+      { cardUrl: '' },
+    ];
+  }
+
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false });
+  const guests    = newOnly
+    ? allGuests.filter(g => !g.cardUrl)
+    : allGuests;
 
   // Block card generation if no guests have QR tokens yet
   const guestsWithQR = guests.filter(g => g.qrToken);
@@ -201,8 +216,11 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
   // Return immediately — process in background
   res.json({
     success: true,
-    message: `Inatengeneza kadi ${guests.length} kwa nyuma. Angalia maendeleo.`,
+    message: newOnly
+      ? `Inatengeneza kadi ${guests.length} za wageni wapya kwa nyuma.`
+      : `Inatengeneza kadi ${guests.length} kwa nyuma. Angalia maendeleo.`,
     total: guests.length,
+    newOnly,
     withQR: guestsWithQR.length,
     withoutQR: guests.length - guestsWithQR.length,
   });

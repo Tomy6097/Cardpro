@@ -73,21 +73,26 @@ const CardGenerator = () => {
   });
 
   const generateAllMutation = useMutation({
-    mutationFn: () => cardsAPI.generateAll(eventId),
+    mutationFn: (newOnly = false) => cardsAPI.generateAll(eventId, newOnly),
     onSuccess: (r) => {
-      const total   = r.data.total    || 0;
+      const total     = r.data.total    || 0;
       const withoutQR = r.data.withoutQR || 0;
+      const newOnly   = r.data.newOnly;
+      if (total === 0) {
+        toast.success('Wageni wote wana kadi tayari. Hakuna cha kutengeneza.', { duration: 5000 });
+        return;
+      }
       if (withoutQR > 0) {
-        toast(`Inatengeneza kadi ${total}. Wageni ${withoutQR} hawana QR — kadi zao hazitakuwa na QR code.`, { icon: '⚠️', duration: 6000 });
+        toast(`Inatengeneza kadi ${total}${newOnly ? ' (wapya)' : ''}. Wageni ${withoutQR} hawana QR.`, { icon: '⚠️', duration: 6000 });
       } else {
-        toast.success(`Inatengeneza kadi ${total} kwa nyuma. Angalia maendeleo hapa chini.`);
+        toast.success(`Inatengeneza kadi ${total}${newOnly ? ' za wageni wapya' : ''} kwa nyuma.`);
       }
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['card-progress', eventId]);
     },
     onError: (err) => {
       const msg = err.response?.data?.hint
-        ? `${err.response.data.message}\n${err.response.data.hint}`
+        ? `${err.response.data.message}\n\n${err.response.data.hint}`
         : err.response?.data?.message || err.message;
       toast.error(msg, { duration: 7000 });
     },
@@ -164,18 +169,41 @@ const CardGenerator = () => {
           )}
           {template?.url && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-              <Button
-                variant="primary"
-                onClick={() => generateAllMutation.mutate()}
-                loading={generateAllMutation.isPending}
-              >
-                Generate All Cards
-              </Button>
-              {totalGuests > 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter' }}>
-                  Wageni: {totalGuests} · Hakikisha QR codes zimegenerated kwanza
-                </span>
-              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {/* New guests only */}
+                <button
+                  onClick={() => generateAllMutation.mutate(true)}
+                  disabled={generateAllMutation.isPending}
+                  style={{
+                    padding: '9px 16px', borderRadius: 'var(--radius)',
+                    background: 'var(--cream-dark)', color: 'var(--primary)',
+                    border: '1px solid var(--primary)', fontSize: '13px',
+                    fontWeight: 600, cursor: generateAllMutation.isPending ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Inter', display: 'flex', alignItems: 'center', gap: '6px',
+                    opacity: generateAllMutation.isPending ? 0.6 : 1,
+                  }}
+                  title="Tengeneza kadi za wageni wapya tu (hawana kadi bado)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+                  </svg>
+                  Wapya Tu
+                </button>
+
+                {/* Regenerate all */}
+                <Button
+                  variant="primary"
+                  onClick={() => generateAllMutation.mutate(false)}
+                  loading={generateAllMutation.isPending}
+                  title="Tengeneza upya kadi za wageni WOTE (inachukua muda)"
+                >
+                  Generate All Cards
+                </Button>
+              </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter', textAlign: 'right' }}>
+                "Wapya Tu" — wageni bila kadi &nbsp;·&nbsp; "Generate All" — tengeneza upya zote
+              </span>
             </div>
           )}
         </div>
