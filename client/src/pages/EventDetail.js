@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { eventsAPI } from '../api';
+import { eventsAPI, reportsAPI } from '../api';
 import Badge from '../components/common/Badge';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const modules = [
   {
@@ -89,6 +90,27 @@ const modules = [
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    try {
+      const res = await reportsAPI.downloadEventReport(id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a   = document.createElement('a');
+      a.href    = url;
+      a.download = `Ripoti_${ev?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'event'}_${new Date().toISOString().slice(0,10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Ripoti imepakiwa!');
+    } catch (err) {
+      toast.error('Imeshindwa kupakua ripoti.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['event', id],
@@ -137,8 +159,46 @@ const EventDetail = () => {
             <h1 style={{ fontFamily: 'Poppins', fontSize: '24px', fontWeight: 700, margin: '0 0 6px', color: '#FFFFFF' }}>{ev.name}</h1>
             <p style={{ margin: 0, opacity: 0.75, fontSize: '14px', color: 'rgba(255,255,255,0.85)' }}>Client: {ev.clientName}</p>
           </div>
-          <Badge status={ev.status} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+            <Badge status={ev.status} />
+            <button
+              onClick={handleDownloadReport}
+              disabled={downloading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '7px',
+                padding: '7px 14px',
+                background: downloading ? 'rgba(201,168,76,0.3)' : 'rgba(201,168,76,0.2)',
+                border: '1px solid rgba(201,168,76,0.5)',
+                borderRadius: 'var(--radius-sm)',
+                color: '#C9A84C',
+                fontSize: '12px', fontWeight: 600,
+                cursor: downloading ? 'not-allowed' : 'pointer',
+                fontFamily: 'Inter',
+                transition: 'all .2s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { if (!downloading) e.currentTarget.style.background = 'rgba(201,168,76,0.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.2)'; }}
+            >
+              {downloading ? (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".2"/><path d="M21 12a9 9 0 01-9 9"/>
+                  </svg>
+                  Inapakua...
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                  </svg>
+                  Pakua Ripoti (PDF)
+                </>
+              )}
+            </button>
+          </div>
         </div>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
 
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', opacity: 0.9, marginBottom: '20px', color: 'rgba(255,255,255,0.9)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

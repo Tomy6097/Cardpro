@@ -31,6 +31,7 @@ const settingsRoutes = require('./routes/settings');
 const dashboardRoutes = require('./routes/dashboard');
 const publicRoutes = require('./routes/public');
 const userRoutes = require('./routes/users');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Root route
 app.get('/', (req, res) => {

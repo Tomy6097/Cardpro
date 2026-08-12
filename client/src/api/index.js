@@ -115,6 +115,11 @@ export const usersAPI = {
   deleteScanner: (id) => api.delete(`/users/scanners/${id}`),
 };
 
+// Reports
+export const reportsAPI = {
+  downloadEventReport: (eventId) => api.get(`/reports/event/${eventId}`, { responseType: 'blob' }),
+};
+
 // Public
 export const publicAPI = {
   getEvent: (slug) => api.get(`/public/event/${slug}`),
