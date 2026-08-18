@@ -98,9 +98,9 @@ const Envelope = ({ guest, pc, bg, ff, t, onDownload }) => {
 
   if (phase === 'open') return (
     <div style={{animation:'cardReveal .7s ease both'}}>
-      {/* Card */}
-      <div style={{borderRadius:'16px',overflow:'hidden',boxShadow:'0 24px 64px rgba(0,0,0,0.7)',marginBottom:'20px',border:`1px solid ${pc}44`}}>
-        <img src={guest.cardUrl} alt="Card" style={{width:'100%',display:'block'}}/>
+      {/* Card — fit screen, no overflow */}
+      <div style={{borderRadius:'16px',overflow:'hidden',boxShadow:'0 24px 64px rgba(0,0,0,0.7)',marginBottom:'20px',border:`1px solid ${pc}44`,maxWidth:'100%'}}>
+        <img src={guest.cardUrl} alt="Card" style={{width:'100%',maxHeight:'65vh',objectFit:'contain',display:'block',background:'#000'}}/>
       </div>
       {/* Actions */}
       <div style={{display:'flex',gap:'10px',justifyContent:'center',flexWrap:'wrap'}}>
@@ -384,13 +384,16 @@ const EventWebsite = () => {
       <div style={{
         position:'fixed',top:'14px',right:'16px',zIndex:1000,
         background:'rgba(0,0,0,0.55)',backdropFilter:'blur(12px)',
-        borderRadius:'30px',border:'1px solid rgba(255,255,255,0.12)',
+        borderRadius:'30px',border:`1px solid ${pc}44`,
         padding:'3px 4px',display:'flex',gap:'2px',
       }}>
         {['sw','en'].map(l=>(
           <button key={l} onClick={()=>setLang(l)}
             className={`lang-btn${lang===l?' active':''}`}
-            style={{color: lang===l ? '#C9A84C' : 'rgba(255,255,255,0.45)'}}
+            style={{
+              color: lang===l ? pc : 'rgba(255,255,255,0.45)',
+              background: lang===l ? `${pc}22` : 'transparent',
+            }}
           >
             {l.toUpperCase()}
           </button>
@@ -578,10 +581,10 @@ const EventWebsite = () => {
                   <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                     <button onClick={confirmRSVP} className="btn-gold" style={{
                       padding:'16px',
-                      background:`linear-gradient(135deg, #b8860b, #C9A84C, #e8c84e)`,
-                      color:'#3a1f00',border:'none',borderRadius:'14px',
+                      background:`linear-gradient(135deg, ${pc}cc, ${pc}, ${pc}dd)`,
+                      color: bg, border:'none',borderRadius:'14px',
                       fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:ff,
-                      transition:'all .25s',boxShadow:'0 6px 24px rgba(201,168,76,0.3)',
+                      transition:'all .25s',boxShadow:`0 6px 24px ${pc}44`,
                     }}>
                       {t.confirmBtn}
                     </button>
@@ -741,6 +744,33 @@ const EventWebsite = () => {
         <p style={{textAlign:'center',color:`${ac}22`,fontSize:'11px',marginTop:'40px',letterSpacing:'3px',textTransform:'uppercase',fontFamily:'Inter,sans-serif'}}>
           {t.poweredBy} {settings?.companyName||'Cardpro'}
         </p>
+
+        {/* Contact footer */}
+        {(settings?.contactPhone || settings?.contactEmail) && (
+          <div style={{marginTop:'16px',padding:'16px 20px',background:'rgba(255,255,255,0.04)',borderRadius:'12px',border:`1px solid ${ac}0d`,textAlign:'center'}}>
+            <p style={{color:`${ac}33`,fontSize:'10px',textTransform:'uppercase',letterSpacing:'2px',margin:'0 0 10px',fontFamily:'Inter,sans-serif'}}>
+              {lang==='sw' ? 'Wasiliana Nasi' : 'Contact Us'}
+            </p>
+            <div style={{display:'flex',justifyContent:'center',gap:'20px',flexWrap:'wrap'}}>
+              {settings?.contactPhone && (
+                <a href={`tel:${settings.contactPhone}`} style={{display:'inline-flex',alignItems:'center',gap:'7px',color:`${ac}66`,textDecoration:'none',fontSize:'13px',fontFamily:'Inter,sans-serif'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .91h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                  </svg>
+                  {settings.contactPhone}
+                </a>
+              )}
+              {settings?.contactEmail && (
+                <a href={`mailto:${settings.contactEmail}`} style={{display:'inline-flex',alignItems:'center',gap:'7px',color:`${ac}66`,textDecoration:'none',fontSize:'13px',fontFamily:'Inter,sans-serif'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  {settings.contactEmail}
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

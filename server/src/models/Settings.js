@@ -6,6 +6,8 @@ const settingsSchema = new mongoose.Schema({
     url: String,
     publicId: String,
   },
+  contactPhone: { type: String, default: '' },
+  contactEmail: { type: String, default: '' },
   senderIdSms: { type: String, default: 'CARDPRO' },
   twilioAccountSid: String,
   twilioAuthToken: String,

@@ -184,7 +184,11 @@ const GuestList = () => {
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['qr-progress', eventId]);
       const total = r.data.total || 0;
-      toast.success(`Generating ${total} QR codes in background.`);
+      if (total === 0) {
+        toast.success('All guests already have QR codes.', { duration: 5000 });
+      } else {
+        toast.success(`Generating ${total} QR codes in background.`);
+      }
     },
     onError: (err) => toast.error(err.message),
   });

@@ -571,7 +571,17 @@ exports.generateAllQRCodes = asyncHandler(async (req, res) => {
   const event = await Event.findById(eventId);
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
-  const guests = await Guest.find({ event: eventId, isDeleted: false });
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false });
+  // Only generate QR for guests that don't have one yet
+  const guests = allGuests.filter(g => !g.qrToken || !g.qrCodeUrl);
+
+  if (guests.length === 0) {
+    return res.json({
+      success: true,
+      total: 0,
+      message: 'All guests already have QR codes. Nothing to generate.',
+    });
+  }
 
   // Return immediately — process in background
   res.json({

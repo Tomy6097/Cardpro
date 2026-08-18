@@ -23,7 +23,8 @@ exports.updateSettings = asyncHandler(async (req, res) => {
   if (!settings) settings = new Settings();
 
   const allowedFields = [
-    'companyName', 'senderIdSms', 'twilioAccountSid', 'twilioAuthToken',
+    'companyName', 'contactPhone', 'contactEmail',
+    'senderIdSms', 'twilioAccountSid', 'twilioAuthToken',
     'twilioWhatsappFrom', 'beemApiKey', 'beemSecretKey', 'beemSenderId',
     'cloudinaryCloudName', 'cloudinaryApiKey', 'cloudinaryApiSecret',
     'defaultSmsTemplate', 'defaultWhatsappTemplate',
