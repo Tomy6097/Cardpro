@@ -98,9 +98,9 @@ const Envelope = ({ guest, pc, bg, ff, t, onDownload }) => {
 
   if (phase === 'open') return (
     <div style={{animation:'cardReveal .7s ease both'}}>
-      {/* Card — fit screen, no overflow */}
+      {/* Card — full width, no black bars */}
       <div style={{borderRadius:'16px',overflow:'hidden',boxShadow:'0 24px 64px rgba(0,0,0,0.7)',marginBottom:'20px',border:`1px solid ${pc}44`,maxWidth:'100%'}}>
-        <img src={guest.cardUrl} alt="Card" style={{width:'100%',maxHeight:'65vh',objectFit:'contain',display:'block',background:'#000'}}/>
+        <img src={guest.cardUrl} alt="Card" style={{width:'100%',height:'auto',display:'block'}}/>
       </div>
       {/* Actions */}
       <div style={{display:'flex',gap:'10px',justifyContent:'center',flexWrap:'wrap'}}>
@@ -450,7 +450,7 @@ const EventWebsite = () => {
       )}
 
       {/* ── CONTENT AREA ── */}
-      <div style={{maxWidth:'700px',margin:'0 auto',padding:`${photos.length?'0':'60px'} 20px 80px`}}>
+      <div style={{maxWidth:'780px',margin:'0 auto',padding:`${photos.length?'0':'60px'} 20px 80px`}}>
 
         {/* Logo / branding */}
         <div style={{textAlign:'center',padding:'36px 0 28px',animation:'fadeUp .8s .2s both'}}>
