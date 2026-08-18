@@ -271,9 +271,14 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
     };
 
     const cvString = JSON.stringify(contentVariables);
+    console.log('=== sendWhatsApp DEBUG ===');
+    console.log('Guest:', guest.guestName, '| Phone:', guest.phone);
+    console.log('From:', from, '| To:', toNumber);
+    console.log('ContentSid:', contentSid);
     console.log('ContentVariables:', cvString);
+    console.log('=========================');
 
-    // Use Twilio REST API directly via axios — avoids SDK contentVariables serialization bugs
+    // Use Twilio REST API directly via axios
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const params = new URLSearchParams();
     params.append('From', from);
@@ -287,7 +292,8 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
       timeout: 30000,
     });
 
-    console.log('Twilio response SID:', response.data?.sid, 'Status:', response.data?.status);
+    console.log('Twilio SID:', response.data?.sid, '| Status:', response.data?.status);
+    console.log('Body sent:', response.data?.body?.substring(0, 100));
   } else {
     const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
     const message  = interpolateTemplate(template, guest, guest.event);
