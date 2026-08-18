@@ -260,7 +260,8 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
 
   const client = twilio(accountSid, authToken);
 
-  if (contentSid && (customMessage === undefined || customMessage === null || customMessage === '')) {
+  // Always use Twilio Content Template for WhatsApp if ContentSid is configured
+  if (contentSid) {
     const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
     const contentVariables = {
       '1': guest.guestName,
@@ -378,7 +379,8 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
 
   for (const guest of guests) {
     try {
-      if (contentSid && (customMessage === undefined || customMessage === null || customMessage === '')) {
+      // Always use Twilio Content Template for WhatsApp if ContentSid is configured
+      if (contentSid) {
         await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
       } else {
         const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
