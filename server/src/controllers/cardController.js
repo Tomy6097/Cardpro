@@ -198,8 +198,6 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
     ? allGuests.filter(g => !g.cardUrl)
     : allGuests;
 
-  // Block card generation if no guests have QR tokens yet
-  const guestsWithQR = guests.filter(g => g.qrToken);
   if (guests.length === 0) {
     return res.status(400).json({
       success: false,
@@ -228,8 +226,8 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: newOnly
-      ? `Inatengeneza kadi ${guests.length} za wageni wapya kwa nyuma.`
-      : `Inatengeneza kadi ${guests.length} kwa nyuma. Angalia maendeleo.`,
+      ? `Generating ${guests.length} new cards in background.`
+      : `Generating ${guests.length} cards in background.`,
     total: guests.length,
     newOnly,
     withQR: guestsWithQR.length,
