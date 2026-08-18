@@ -184,7 +184,7 @@ const GuestList = () => {
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['qr-progress', eventId]);
       const total = r.data.total || 0;
-      toast.success(`Inatengeneza QR codes ${total} kwa nyuma.`);
+      toast.success(`Generating ${total} QR codes in background.`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -217,7 +217,7 @@ const GuestList = () => {
     mutationFn: ({ id, data }) => guestsAPI.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries(['guests', eventId]);
-      toast.success('Taarifa za mgeni zimebadilishwa.');
+      toast.success('Guest updated successfully.');
       setEditModal(false);
       setEditGuest(null);
     },
@@ -258,9 +258,9 @@ const GuestList = () => {
 
   const handleAddGuest = () => {
     const errors = {};
-    if (!form.guestName.trim()) errors.guestName = 'Jina linahitajika';
-    if (!form.phone.trim()) errors.phone = 'Namba ya simu inahitajika';
-    else if (!validatePhone(form.phone)) errors.phone = 'Namba ya simu si sahihi (mfano: 0754696878 au 255754696878)';
+    if (!form.guestName.trim()) errors.guestName = 'Name is required';
+    if (!form.phone.trim()) errors.phone = 'Phone number is required';
+    else if (!validatePhone(form.phone)) errors.phone = 'Invalid phone number (e.g. 0754696878 or 255754696878)';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setFormErrors({});
     addMutation.mutate(form);
@@ -268,8 +268,8 @@ const GuestList = () => {
 
   const handleEditGuest = () => {
     const errors = {};
-    if (!editForm.guestName.trim()) errors.guestName = 'Jina linahitajika';
-    if (editForm.phone && !validatePhone(editForm.phone)) errors.phone = 'Namba ya simu si sahihi';
+    if (!editForm.guestName.trim()) errors.guestName = 'Name is required';
+    if (editForm.phone && !validatePhone(editForm.phone)) errors.phone = 'Invalid phone number (e.g. 0754696878 or 255754696878)';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setFormErrors({});
     editMutation.mutate({ id: editGuest._id, data: editForm });
@@ -347,7 +347,7 @@ const GuestList = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C9A84C', animation: 'pulse 1.5s ease-in-out infinite' }} />
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
-                Inatengeneza kadi...
+                Generating cards...
               </span>
             </div>
             <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 700 }}>
@@ -358,7 +358,7 @@ const GuestList = () => {
             <div style={{ width: `${cardProgress.pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))', borderRadius: '6px', transition: 'width .5s ease' }} />
           </div>
           {cardProgress.failed > 0 && (
-            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{cardProgress.failed} kadi zilishindwa</p>
+            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{cardProgress.failed} cards failed</p>
           )}
         </div>
       )}
@@ -370,7 +370,7 @@ const GuestList = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4F46E5', animation: 'pulse 1.5s ease-in-out infinite' }} />
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
-                Inatengeneza QR codes...
+                Generating QR codes...
               </span>
             </div>
             <span style={{ fontSize: '13px', color: '#4F46E5', fontWeight: 700 }}>
@@ -381,7 +381,7 @@ const GuestList = () => {
             <div style={{ width: `${qrProgress.pct}%`, height: '100%', background: 'linear-gradient(90deg, #4F46E5, #818CF8)', borderRadius: '6px', transition: 'width .5s ease' }} />
           </div>
           {qrProgress.failed > 0 && (
-            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{qrProgress.failed} QR zilishindwa</p>
+            <p style={{ fontSize: '11px', color: 'var(--danger)', margin: '6px 0 0' }}>{qrProgress.failed} QR codes failed</p>
           )}
           <style>{`@keyframes pulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}`}</style>
         </div>
@@ -392,10 +392,10 @@ const GuestList = () => {
         <div style={{ background: '#EEF2FF', borderRadius: 'var(--radius)', border: '1px solid #C7D2FE', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span style={{ fontSize: '13px', color: '#3730A3', fontWeight: 500 }}>QR codes zimetengenezwa. Nenda Card Generator ili update kadi.</span>
+            <span style={{ fontSize: '13px', color: '#3730A3', fontWeight: 500 }}>QR codes generated. Go to Card Generator to update cards.</span>
           </div>
           <a href={`/events/${eventId}/cards`} style={{ padding: '5px 14px', background: '#4F46E5', color: 'white', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Tengeneza Kadi
+            Generate Cards
           </a>
         </div>
       )}
@@ -500,9 +500,8 @@ const GuestList = () => {
                           title="Scan History"
                         >
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                          Historia
-                        </button>
-                      )}
+                          History
+                        </button>                      )}
 
                       {/* Preview as Guest — opens invitation website */}
                       {event?.slug && g.verificationCode && (
@@ -575,62 +574,62 @@ const GuestList = () => {
       </div>
 
       {/* Add Guest Modal */}
-      <Modal isOpen={addModal} onClose={() => { setAddModal(false); setFormErrors({}); }} title="Ongeza Mgeni" width="480px" offsetTop={48}
+      <Modal isOpen={addModal} onClose={() => { setAddModal(false); setFormErrors({}); }} title="Add Guest" width="480px" offsetTop={48}
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setAddModal(false); setFormErrors({}); }}>Ghairi</Button>
-            <Button variant="primary" loading={addMutation.isPending} onClick={handleAddGuest}>Ongeza Mgeni</Button>
+            <Button variant="secondary" onClick={() => { setAddModal(false); setFormErrors({}); }}>Cancel</Button>
+            <Button variant="primary" loading={addMutation.isPending} onClick={handleAddGuest}>Add Guest</Button>
           </>
         }
       >
         <div>
-          <Input label="Jina la Mgeni *" name="guestName" value={form.guestName} onChange={e => { setForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
+          <Input label="Guest Name *" name="guestName" value={form.guestName} onChange={e => { setForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
           {formErrors.guestName && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.guestName}</p>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
           <div>
-            <Input label="Namba ya Simu *" name="phone" value={form.phone} onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} required placeholder="0754696878" />
+            <Input label="Phone Number *" name="phone" value={form.phone} onChange={e => { setForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} required placeholder="0754696878" />
             {formErrors.phone && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.phone}</p>}
           </div>
-          <Select label="Aina ya Tiketi" name="ticketType" value={form.ticketType}
+          <Select label="Ticket Type" name="ticketType" value={form.ticketType}
             onChange={e => setForm(p => ({ ...p, ticketType: e.target.value }))}
             options={ticketOptions}
           />
         </div>
-        <Input label="Barua Pepe (si lazima)" name="email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+        <Input label="Email (optional)" name="email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-          <Input label="Nambari ya Meza" name="tableNumber" value={form.tableNumber} onChange={e => setForm(p => ({ ...p, tableNumber: e.target.value }))} />
-          <Input label="Maelezo" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          <Input label="Table Number" name="tableNumber" value={form.tableNumber} onChange={e => setForm(p => ({ ...p, tableNumber: e.target.value }))} />
+          <Input label="Notes" name="notes" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
       </Modal>
 
       {/* Edit Guest Modal */}
-      <Modal isOpen={editModal} onClose={() => { setEditModal(false); setFormErrors({}); }} title={`Badilisha: ${editGuest?.guestName || ''}`} width="480px" offsetTop={48}
+      <Modal isOpen={editModal} onClose={() => { setEditModal(false); setFormErrors({}); }} title={`Edit: ${editGuest?.guestName || ''}`} width="480px" offsetTop={48}
         footer={
           <>
-            <Button variant="secondary" onClick={() => { setEditModal(false); setFormErrors({}); }}>Ghairi</Button>
-            <Button variant="primary" loading={editMutation.isPending} onClick={handleEditGuest}>Hifadhi Mabadiliko</Button>
+            <Button variant="secondary" onClick={() => { setEditModal(false); setFormErrors({}); }}>Cancel</Button>
+            <Button variant="primary" loading={editMutation.isPending} onClick={handleEditGuest}>Save Changes</Button>
           </>
         }
       >
         <div>
-          <Input label="Jina la Mgeni *" name="guestName" value={editForm.guestName} onChange={e => { setEditForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
+          <Input label="Guest Name *" name="guestName" value={editForm.guestName} onChange={e => { setEditForm(p => ({ ...p, guestName: e.target.value })); setFormErrors(p => ({ ...p, guestName: '' })); }} required />
           {formErrors.guestName && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.guestName}</p>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
           <div>
-            <Input label="Namba ya Simu" name="phone" value={editForm.phone} onChange={e => { setEditForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} placeholder="0754696878" />
+            <Input label="Phone Number" name="phone" value={editForm.phone} onChange={e => { setEditForm(p => ({ ...p, phone: e.target.value })); setFormErrors(p => ({ ...p, phone: '' })); }} placeholder="0754696878" />
             {formErrors.phone && <p style={{ color: 'var(--danger)', fontSize: '11px', margin: '-8px 0 8px', fontFamily: 'Inter' }}>{formErrors.phone}</p>}
           </div>
-          <Select label="Aina ya Tiketi" name="ticketType" value={editForm.ticketType}
+          <Select label="Ticket Type" name="ticketType" value={editForm.ticketType}
             onChange={e => setEditForm(p => ({ ...p, ticketType: e.target.value }))}
             options={ticketOptions}
           />
         </div>
-        <Input label="Barua Pepe (si lazima)" name="email" type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
+        <Input label="Email (optional)" name="email" type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-          <Input label="Nambari ya Meza" name="tableNumber" value={editForm.tableNumber} onChange={e => setEditForm(p => ({ ...p, tableNumber: e.target.value }))} />
-          <Input label="Maelezo" name="notes" value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
+          <Input label="Table Number" name="tableNumber" value={editForm.tableNumber} onChange={e => setEditForm(p => ({ ...p, tableNumber: e.target.value }))} />
+          <Input label="Notes" name="notes" value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
         </div>
       </Modal>
 
@@ -642,7 +641,7 @@ const GuestList = () => {
             <div onClick={e => e.stopPropagation()} style={{ width: 'min(480px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 32px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', overflow: 'hidden', pointerEvents: 'all', display: 'flex', flexDirection: 'column' }}>
               <div style={{ background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>Historia ya Scan</h3>
+                  <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>Scan History</h3>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', margin: '2px 0 0' }}>{scanHistoryGuest.guestName} · {scanHistoryGuest.ticketType}</p>
                 </div>
                 <button onClick={() => setScanHistoryGuest(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -653,7 +652,7 @@ const GuestList = () => {
                 {(!scanHistoryGuest.scanHistory || scanHistoryGuest.scanHistory.length === 0) ? (
                   <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '10px', opacity: 0.4 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <p style={{ fontSize: '13px', margin: 0 }}>Hakuna historia ya scan</p>
+                    <p style={{ fontSize: '13px', margin: 0 }}>No scan history</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -661,7 +660,7 @@ const GuestList = () => {
                       <div key={i} style={{ padding: '12px 14px', background: 'var(--cream)', borderRadius: 'var(--radius)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ fontWeight: 600, fontSize: '13px', color: 'var(--primary-dark)', margin: '0 0 3px' }}>
-                            Ingizo #{s.entryNumber || i + 1}
+                            Entry #{s.entryNumber || i + 1}
                           </p>
                           <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
                             {s.scannedAt ? new Date(s.scannedAt).toLocaleString('sw-TZ', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}

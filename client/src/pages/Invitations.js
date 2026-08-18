@@ -189,14 +189,14 @@ const Invitations = () => {
             <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
               Message Template
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
-                (imehifadhiwa moja kwa moja)
+                (auto-saved)
               </span>
             </label>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {template && (
                 <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  Imehifadhiwa
+                  Saved
                 </span>
               )}
               {template && (
@@ -204,7 +204,7 @@ const Invitations = () => {
                   onClick={() => setTemplate('')}
                   style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
                 >
-                  Futa template
+                  Clear template
                 </button>
               )}
             </div>

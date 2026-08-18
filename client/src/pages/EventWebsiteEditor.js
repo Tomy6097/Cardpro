@@ -316,7 +316,7 @@ const EventWebsiteEditor = () => {
                 </video>
                 <div style={{ padding: '10px 12px', background: 'var(--cream)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Video imewekwa</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Video uploaded</span>
                     {ev.invitationVideo.caption && (
                       <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         "{ev.invitationVideo.caption}"
@@ -324,12 +324,12 @@ const EventWebsiteEditor = () => {
                     )}
                   </div>
                   <button
-                    onClick={() => { if (window.confirm('Futa video?')) deleteVideoMutation.mutate(); }}
+                    onClick={() => { if (window.confirm('Delete this video?')) deleteVideoMutation.mutate(); }}
                     disabled={deleteVideoMutation.isPending}
                     style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', background: 'var(--danger-light)', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--danger)', cursor: 'pointer', flexShrink: 0 }}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                    Futa
+                    Remove
                   </button>
                 </div>
               </div>
@@ -338,7 +338,7 @@ const EventWebsiteEditor = () => {
             {/* Caption for video */}
             <input
               type="text"
-              placeholder="Caption ya video (optional, e.g. 'Trailer ya Harusi')"
+              placeholder="Video caption (optional, e.g. 'Wedding Trailer')"
               value={videoCaption}
               onChange={e => setVideoCaption(e.target.value)}
               style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '13px', outline: 'none', fontFamily: 'Inter', marginBottom: '10px', boxSizing: 'border-box' }}

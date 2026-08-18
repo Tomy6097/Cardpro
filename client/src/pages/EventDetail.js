@@ -104,9 +104,9 @@ const EventDetail = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Ripoti imepakiwa!');
+      toast.success('Report downloaded!');
     } catch (err) {
-      toast.error('Imeshindwa kupakua ripoti.');
+      toast.error('Failed to download report.');
     } finally {
       setDownloading(false);
     }
@@ -185,15 +185,14 @@ const EventDetail = () => {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
                     <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".2"/><path d="M21 12a9 9 0 01-9 9"/>
                   </svg>
-                  Inapakua...
+                  Downloading...
                 </>
               ) : (
                 <>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                   </svg>
-                  Pakua Ripoti (PDF)
-                </>
+                  Download Report (PDF)                </>
               )}
             </button>
           </div>

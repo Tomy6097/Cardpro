@@ -111,10 +111,10 @@ const RSVPDashboard = () => {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
-                Sababu za Kutokuwepo
+                Decline Reasons
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
-                Wageni {declinedGuests.length} waliokataa na kutoa sababu
+                {declinedGuests.length} guests who declined and provided reasons
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {declinedGuests.map(g => (

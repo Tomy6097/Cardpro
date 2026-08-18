@@ -79,13 +79,13 @@ const CardGenerator = () => {
       const withoutQR = r.data.withoutQR || 0;
       const newOnly   = r.data.newOnly;
       if (total === 0) {
-        toast.success('Wageni wote wana kadi tayari. Hakuna cha kutengeneza.', { duration: 5000 });
+        toast.success('All guests already have cards. Nothing to generate.', { duration: 5000 });
         return;
       }
       if (withoutQR > 0) {
-        toast(`Inatengeneza kadi ${total}${newOnly ? ' (wapya)' : ''}. Wageni ${withoutQR} hawana QR.`, { icon: '⚠️', duration: 6000 });
+        toast(`Generating ${total}${newOnly ? ' new' : ''} cards in background. ${withoutQR} guests have no QR — their cards will not have QR codes.`, { icon: '⚠️', duration: 6000 });
       } else {
-        toast.success(`Inatengeneza kadi ${total}${newOnly ? ' za wageni wapya' : ''} kwa nyuma.`);
+        toast.success(`Generating ${total}${newOnly ? ' new' : ''} cards in background.`);
       }
       qc.invalidateQueries(['guests', eventId]);
       qc.invalidateQueries(['card-progress', eventId]);
@@ -182,13 +182,13 @@ const CardGenerator = () => {
                     fontFamily: 'Inter', display: 'flex', alignItems: 'center', gap: '6px',
                     opacity: generateAllMutation.isPending ? 0.6 : 1,
                   }}
-                  title="Tengeneza kadi za wageni wapya tu (hawana kadi bado)"
+                  title="Generate cards for new guests only (no card yet)"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
                     <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
                   </svg>
-                  Wapya Tu
+                  New Only
                 </button>
 
                 {/* Regenerate all */}
@@ -196,13 +196,13 @@ const CardGenerator = () => {
                   variant="primary"
                   onClick={() => generateAllMutation.mutate(false)}
                   loading={generateAllMutation.isPending}
-                  title="Tengeneza upya kadi za wageni WOTE (inachukua muda)"
+                  title="Regenerate cards for ALL guests (takes longer)"
                 >
                   Generate All Cards
                 </Button>
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'Inter', textAlign: 'right' }}>
-                "Wapya Tu" — wageni bila kadi &nbsp;·&nbsp; "Generate All" — tengeneza upya zote
+                "New Only" — guests without cards &nbsp;·&nbsp; "Generate All" — regenerate all
               </span>
             </div>
           )}
@@ -216,7 +216,7 @@ const CardGenerator = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
               <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', fontFamily: 'Poppins' }}>
-                Inatengeneza kadi...
+                Generating cards...
               </span>
             </div>
             <span style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: 700, fontFamily: 'Poppins' }}>
@@ -233,11 +233,11 @@ const CardGenerator = () => {
           </div>
           {cardProgress.failed > 0 && (
             <p style={{ fontSize: '12px', color: 'var(--danger)', margin: '8px 0 0' }}>
-              ⚠ Kadi {cardProgress.failed} zilishindwa kutengenezwa
+              ⚠ {cardProgress.failed} cards failed to generate
             </p>
           )}
           <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '6px 0 0' }}>
-            Inaweza kuchukua dakika chache kulingana na idadi ya wageni
+            This may take a few minutes depending on the number of guests
           </p>
           <style>{`@keyframes pulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}`}</style>
         </div>

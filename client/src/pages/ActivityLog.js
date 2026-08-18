@@ -65,7 +65,7 @@ const ActivityLog = () => {
   });
 
   const handleCleanup = () => {
-    if (!window.confirm(`Futa logs zote zaidi ya siku ${cleanupDays}? Haiwezi kurudishwa.`)) return;
+    if (!window.confirm(`Delete all logs older than ${cleanupDays} days? This cannot be undone.`)) return;
     cleanupMutation.mutate(cleanupDays);
   };
 
@@ -111,14 +111,14 @@ const ActivityLog = () => {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
             </svg>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Futa logs za zaidi ya</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Delete logs older than</span>
             <select
               value={cleanupDays}
               onChange={e => setCleanupDays(Number(e.target.value))}
               style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', outline: 'none', background: 'var(--white)', cursor: 'pointer' }}
             >
               {[7, 14, 30, 60, 90].map(d => (
-                <option key={d} value={d}>Siku {d}</option>
+                <option key={d} value={d}>{d} days</option>
               ))}
             </select>
             <button
@@ -126,7 +126,7 @@ const ActivityLog = () => {
               disabled={cleanupMutation.isPending}
               style={{ padding: '5px 14px', background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 600, cursor: cleanupMutation.isPending ? 'not-allowed' : 'pointer', fontFamily: 'Inter', opacity: cleanupMutation.isPending ? 0.6 : 1 }}
             >
-              {cleanupMutation.isPending ? 'Inafuta...' : 'Futa'}
+              {cleanupMutation.isPending ? 'Deleting...' : 'Delete'}
             </button>
           </div>
         )}

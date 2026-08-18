@@ -335,7 +335,7 @@ const EventWebsite = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${(guest.guestName||'card').replace(/\s+/g,'_')}_mwaliko.jpg`;
+      a.download = `${(guest.guestName||'card').replace(/\s+/g,'_')}_invitation.jpg`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch { window.open(guest.cardUrl,'_blank'); }
