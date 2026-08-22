@@ -271,7 +271,8 @@ const EventWebsite = () => {
   const t = T[lang];
 
   useEffect(() => {
-    fetch(`${API}/settings`).then(r=>r.ok?r.json():null)
+    // Use public settings endpoint — no auth required
+    fetch(`${API}/public/settings`).then(r=>r.ok?r.json():null)
       .then(d=>{ if(d?.settings) setSettings(d.settings); }).catch(()=>{});
   }, []);
 
