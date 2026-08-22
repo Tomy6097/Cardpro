@@ -453,18 +453,6 @@ const EventWebsite = () => {
       {/* ── CONTENT AREA ── */}
       <div style={{maxWidth:'780px',margin:'0 auto',padding:`${photos.length?'0':'60px'} 20px 80px`}}>
 
-        {/* Logo / branding */}
-        <div style={{textAlign:'center',padding:'36px 0 28px',animation:'fadeUp .8s .2s both'}}>
-          {settings?.logo?.url ? (
-            <img src={settings.logo.url} alt={settings.companyName||'Cardpro'}
-              style={{height:'38px',width:'auto',objectFit:'contain',filter:'brightness(0) invert(1)',opacity:.65}}/>
-          ) : (
-            <p style={{fontSize:'10px',letterSpacing:'4px',color:`${pc}66`,textTransform:'uppercase',margin:0,fontFamily:'Inter,sans-serif'}}>
-              {settings?.companyName||'Cardpro'}
-            </p>
-          )}
-        </div>
-
         {/* ── ENVELOPE / CARD ── */}
         {guest?.cardUrl && (
           <div style={{animation:'fadeUp .8s .3s both'}}>
