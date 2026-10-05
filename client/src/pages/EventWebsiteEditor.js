@@ -27,6 +27,7 @@ const EventWebsiteEditor = () => {
   const [photoCaption, setPhotoCaption] = useState('');
   const [videoCaption, setVideoCaption] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [nameEn, setNameEn] = useState('');
   const [dressColors, setDressColors] = useState([]);
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#C9A84C');
@@ -45,6 +46,9 @@ const EventWebsiteEditor = () => {
     }
     if (eventData?.event?.welcomeMessage !== undefined) {
       setWelcomeMessage(eventData.event.welcomeMessage);
+    }
+    if (eventData?.event?.nameEn !== undefined) {
+      setNameEn(eventData.event.nameEn);
     }
   }, [eventData]);
 
@@ -197,6 +201,33 @@ const EventWebsiteEditor = () => {
           {/* Welcome Message */}
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
             <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 6px' }}>
+              Event Name Translation
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>
+              Swahili name (e.g. "Harusi") is the main name. Add English translation shown when guest switches to English.
+            </p>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                Event Name (Kiswahili) — current: <strong>{ev?.name}</strong>
+              </label>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                Edit from Events → Edit Event
+              </p>
+              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                English Translation (EN)
+              </label>
+              <input
+                type="text"
+                value={nameEn}
+                onChange={e => setNameEn(e.target.value)}
+                placeholder="e.g. Wedding, Birthday Party, Graduation..."
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '13px', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box', marginBottom: '10px' }}
+                onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '16px 0 6px' }}>
               Website Welcome Message
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>
@@ -211,8 +242,8 @@ const EventWebsiteEditor = () => {
               onFocus={e => e.target.style.borderColor = 'var(--primary)'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
-            <Button variant="primary" size="sm" fullWidth onClick={() => welcomeMutation.mutate({ welcomeMessage })} loading={welcomeMutation.isPending}>
-              Save Welcome Message
+            <Button variant="primary" size="sm" fullWidth onClick={() => welcomeMutation.mutate({ welcomeMessage, nameEn })} loading={welcomeMutation.isPending}>
+              Save
             </Button>
           </div>
         </div>

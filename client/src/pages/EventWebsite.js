@@ -401,6 +401,9 @@ const EventWebsite = () => {
   const photos      = event.eventPhotos      || [];
   const dressImages = event.dressCodeImages  || [];
 
+  // Use translated name if language is EN and nameEn exists
+  const displayName = (lang === 'en' && event.nameEn) ? event.nameEn : event.name;
+
   return (
     <div style={{minHeight:'100vh',background:bg,fontFamily:ff,overflowX:'hidden'}}>
       <style>{STYLES}</style>
@@ -521,7 +524,7 @@ const EventWebsite = () => {
               {t.invitedTo}
             </p>
             <h1 style={{fontFamily:ff,fontSize:'28px',fontWeight:700,color:ac,textAlign:'center',margin:'0 0 6px',lineHeight:1.2}}>
-              {event.name}
+              {displayName}
             </h1>
             <p style={{textAlign:'center',color:`${ac}55`,fontSize:'14px',margin:'0 0 28px',fontFamily:'Inter,sans-serif'}}>
               {t.by} {event.clientName}

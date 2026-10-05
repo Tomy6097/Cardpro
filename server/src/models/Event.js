@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const eventSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
+  nameEn: { type: String, trim: true, default: '' }, // English translation of event name
   slug: { type: String, unique: true, lowercase: true },
   clientName: { type: String, required: true, trim: true },
   date: { type: Date, required: true },
