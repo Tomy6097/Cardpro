@@ -668,35 +668,63 @@ const EventWebsite = () => {
               let embedUrl = '';
               try {
                 const url = event.googleMapsUrl;
-                if (url.includes('maps/embed')) {
+
+                // Case 1: Already an embed URL
+                if (url.includes('maps/embed') || url.includes('output=embed')) {
                   embedUrl = url;
-                } else {
-                  const encoded = encodeURIComponent(url);
-                  embedUrl = `https://maps.google.com/maps?q=${encoded}&output=embed`;
+                }
+                // Case 2: Google Maps with @lat,lng format e.g. /@-6.7924,39.2083,15z
+                else if (url.includes('google.com/maps')) {
+                  const coordMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                  if (coordMatch) {
+                    const lat = coordMatch[1];
+                    const lng = coordMatch[2];
+                    embedUrl = `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+                  } else {
+                    // Extract place or query from URL
+                    const placeMatch = url.match(/place\/([^/@]+)/);
+                    const queryMatch = url.match(/[?&]q=([^&]+)/);
+                    const term = placeMatch ? decodeURIComponent(placeMatch[1].replace(/\+/g,' '))
+                                : queryMatch ? decodeURIComponent(queryMatch[1])
+                                : null;
+                    if (term) embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(term)}&output=embed`;
+                  }
+                }
+                // Case 3: short URL goo.gl or maps.app.goo.gl — use as query
+                else {
+                  // Fallback: try to embed as search query
+                  embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
                 }
               } catch {}
+
               return (
-                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
-                  {embedUrl && (
-                    <iframe
-                      src={embedUrl}
-                      width="100%"
-                      height="220"
-                      style={{border:'none',display:'block'}}
-                      allowFullScreen=""
-                      loading="lazy"
-                      title="Location Map"
-                    />
-                  )}
-                  <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
+                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`,cursor:'pointer'}}
+                  onClick={() => window.open(event.googleMapsUrl, '_blank')}
+                >
+                  {embedUrl ? (
+                    <div style={{position:'relative',width:'100%',height:'220px',pointerEvents:'none'}}>
+                      <iframe
+                        src={embedUrl}
+                        width="100%"
+                        height="220"
+                        style={{border:'none',display:'block',position:'absolute',top:0,left:0}}
+                        allowFullScreen=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Location Map"
+                      />
+                      {/* Transparent overlay so parent onClick fires */}
+                      <div style={{position:'absolute',inset:0,zIndex:2,background:'transparent'}}/>
+                    </div>
+                  ) : null}
+                  <div style={{
                     display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
                     padding:'11px',background:'rgba(255,255,255,0.04)',
-                    color:`${ac}55`,textDecoration:'none',fontSize:'13px',
-                    fontFamily:'Inter,sans-serif',
+                    color:`${ac}66`,fontSize:'13px',fontFamily:'Inter,sans-serif',
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     {t.mapsBtn}
-                  </a>
+                  </div>
                 </div>
               );
             })()}
