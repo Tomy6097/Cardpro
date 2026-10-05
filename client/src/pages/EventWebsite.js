@@ -669,70 +669,58 @@ const EventWebsite = () => {
               try {
                 const url = event.googleMapsUrl;
 
-                // Case 1: Already an embed URL
-                if (url.includes('maps/embed') || url.includes('output=embed')) {
+                // Case 1: Already proper embed URL
+                if (url.includes('output=embed') || url.includes('maps/embed')) {
                   embedUrl = url;
                 }
-                // Case 2: Google Maps with @lat,lng format e.g. /@-6.7924,39.2083,15z
-                else if (url.includes('google.com/maps')) {
-                  const coordMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-                  if (coordMatch) {
-                    const lat = coordMatch[1];
-                    const lng = coordMatch[2];
-                    // Extract zoom level from URL or default to 16
-                    const zoomMatch = url.match(/@-?\d+\.?\d*,-?\d+\.?\d*,(\d+)z/);
-                    const zoom = zoomMatch ? zoomMatch[1] : '16';
-                    embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
-                  } else {
-                    // Extract place or query from URL
-                    const placeMatch = url.match(/place\/([^/@]+)/);
-                    const queryMatch = url.match(/[?&]q=([^&]+)/);
-                    const term = placeMatch ? decodeURIComponent(placeMatch[1].replace(/\+/g,' '))
-                                : queryMatch ? decodeURIComponent(queryMatch[1])
-                                : null;
-                    if (term) embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(term)}&z=16&output=embed`;
+                // Case 2: Full Google Maps URL with coordinates @lat,lng,zoom
+                else if (url.includes('google.com/maps') && url.includes('@')) {
+                  const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+),(\d+)/);
+                  if (m) {
+                    // Use Google Maps Embed API v1 with lat/lng
+                    embedUrl = `https://www.google.com/maps/embed/v1/view?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&center=${m[1]},${m[2]}&zoom=${m[3]}&maptype=roadmap`;
                   }
                 }
-                // Case 3: short URL or unknown — extract any coordinates or use as query
-                else {
-                  // Try to find coordinates anywhere in the URL
-                  const coordMatch = url.match(/(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);
-                  if (coordMatch) {
-                    embedUrl = `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&z=16&output=embed`;
-                  } else {
-                    embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(url)}&z=16&output=embed`;
+                // Case 3: Full URL with place
+                else if (url.includes('google.com/maps/place')) {
+                  const placeMatch = url.match(/place\/([^/@?]+)/);
+                  if (placeMatch) {
+                    const place = decodeURIComponent(placeMatch[1]).replace(/\+/g,' ');
+                    embedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q=${encodeURIComponent(place)}`;
                   }
                 }
               } catch {}
 
+              // If embed URL couldn't be built, just show the link button
               return (
-                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`,cursor:'pointer'}}
-                  onClick={() => window.open(event.googleMapsUrl, '_blank')}
-                >
+                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
                   {embedUrl ? (
-                    <div style={{position:'relative',width:'100%',height:'220px',pointerEvents:'none'}}>
+                    <div style={{position:'relative',width:'100%',height:'240px'}}>
                       <iframe
                         src={embedUrl}
                         width="100%"
-                        height="220"
-                        style={{border:'none',display:'block',position:'absolute',top:0,left:0}}
+                        height="240"
+                        style={{border:'none',display:'block'}}
                         allowFullScreen=""
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
                         title="Location Map"
                       />
-                      {/* Transparent overlay so parent onClick fires */}
-                      <div style={{position:'absolute',inset:0,zIndex:2,background:'transparent'}}/>
                     </div>
-                  ) : null}
-                  <div style={{
+                  ) : (
+                    <div style={{height:'80px',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <p style={{color:`${ac}33`,fontSize:'12px',fontFamily:'Inter,sans-serif'}}>Map preview not available for this URL type</p>
+                    </div>
+                  )}
+                  <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
                     display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-                    padding:'11px',background:'rgba(255,255,255,0.04)',
-                    color:`${ac}66`,fontSize:'13px',fontFamily:'Inter,sans-serif',
+                    padding:'12px',background:'rgba(255,255,255,0.04)',
+                    color:`${ac}66`,textDecoration:'none',fontSize:'13px',
+                    fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
                   }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     {t.mapsBtn}
-                  </div>
+                  </a>
                 </div>
               );
             })()}
