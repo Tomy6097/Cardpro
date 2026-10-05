@@ -6,10 +6,27 @@ const Settings = require('../models/Settings');
 const { logActivity } = require('../utils/activityLogger');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  });
+// Month names in Swahili
+const SW_MONTHS = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
+const SW_DAYS   = ['Jumapili','Jumatatu','Jumanne','Jumatano','Alhamisi','Ijumaa','Jumamosi'];
+
+const formatDate = (date, lang = 'sw') => {
+  const d = new Date(date);
+  if (lang === 'en') {
+    return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  }
+  // Kiswahili format: Jumatatu, 25 Desemba 2026
+  const dayName   = SW_DAYS[d.getDay()];
+  const day       = d.getDate();
+  const month     = SW_MONTHS[d.getMonth()];
+  const year      = d.getFullYear();
+  return `${dayName}, ${day} ${month} ${year}`;
+};
+
+// Detect language from template content
+const detectLang = (template) => {
+  const swWords = ['Mpendwa','Umealikwa','Tarehe','Mahali','Tafadhali','Karibu','thibitisha','Saa','Dress Code'];
+  return swWords.some(w => template.includes(w)) ? 'sw' : 'en';
 };
 
 const buildConfirmUrl = (eventSlug, guestVerificationCode) => {
@@ -19,11 +36,12 @@ const buildConfirmUrl = (eventSlug, guestVerificationCode) => {
 
 const interpolateTemplate = (template, guest, event) => {
   const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
+  const lang = detectLang(template);
   return template
     .replace(/{guestName}/g, guest.guestName)
     .replace(/{eventName}/g, event.name)
-    .replace(/{date}/g, formatDate(event.date))
-    .replace(/{time}/g, event.time)
+    .replace(/{date}/g, formatDate(event.date, lang))
+    .replace(/{time}/g, event.time || '')
     .replace(/{venue}/g, event.venue)
     .replace(/{dressCode}/g, event.dressCode || '')
     .replace(/{confirmUrl}/g, confirmUrl)
@@ -133,7 +151,7 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
   const contentVariables = {
     '1': guest.guestName,
     '2': event.name,
-    '3': formatDate(event.date) + (event.time ? ` saa ${event.time}` : ''),
+    '3': formatDate(event.date, 'sw') + (event.time ? ` · ${event.time}` : ''),
     '4': event.venue,
     '5': event.dressCode || 'Smart Casual',
     '6': confirmUrl,
@@ -266,7 +284,7 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
     const contentVariables = {
       '1': guest.guestName,
       '2': guest.event.name,
-      '3': formatDate(guest.event.date) + (guest.event.time ? ` · ${guest.event.time}` : ''),
+      '3': formatDate(guest.event.date, 'sw') + (guest.event.time ? ` · ${guest.event.time}` : ''),
       '4': guest.event.venue,
       '5': guest.event.dressCode || 'Smart Casual',
       '6': confirmUrl,
