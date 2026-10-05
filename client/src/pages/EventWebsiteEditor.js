@@ -26,6 +26,7 @@ const EventWebsiteEditor = () => {
   const [dressGender, setDressGender] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
   const [videoCaption, setVideoCaption] = useState('');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
   const [dressColors, setDressColors] = useState([]);
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#C9A84C');
@@ -42,11 +43,20 @@ const EventWebsiteEditor = () => {
     if (eventData?.event?.dressCodeColors) {
       setDressColors(eventData.event.dressCodeColors);
     }
+    if (eventData?.event?.welcomeMessage !== undefined) {
+      setWelcomeMessage(eventData.event.welcomeMessage);
+    }
   }, [eventData]);
 
   const themeMutation = useMutation({
     mutationFn: d => eventsAPI.updateWebsiteTheme(eventId, d),
     onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Theme saved.'); },
+    onError: err => toast.error(err.message),
+  });
+
+  const welcomeMutation = useMutation({
+    mutationFn: d => eventsAPI.update(eventId, d),
+    onSuccess: () => { qc.invalidateQueries(['event', eventId]); toast.success('Welcome message saved.'); },
     onError: err => toast.error(err.message),
   });
   const uploadDressMutation = useMutation({
@@ -182,6 +192,28 @@ const EventWebsiteEditor = () => {
             </div>
 
             <Button variant="primary" fullWidth onClick={() => themeMutation.mutate(theme)} loading={themeMutation.isPending}>Save Theme</Button>
+          </div>
+
+          {/* Welcome Message */}
+          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '22px' }}>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 6px' }}>
+              Website Welcome Message
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>
+              Shown uniquely on this event's website (e.g. personal message to guests)
+            </p>
+            <textarea
+              value={welcomeMessage}
+              onChange={e => setWelcomeMessage(e.target.value)}
+              placeholder="Join us as we celebrate the union of two hearts..."
+              rows={4}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '13px', fontFamily: 'Inter', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px', lineHeight: 1.6 }}
+              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+            <Button variant="primary" size="sm" fullWidth onClick={() => welcomeMutation.mutate({ welcomeMessage })} loading={welcomeMutation.isPending}>
+              Save Welcome Message
+            </Button>
           </div>
         </div>
 

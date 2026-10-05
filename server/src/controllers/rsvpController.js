@@ -125,3 +125,15 @@ exports.getRecentRSVPCount = asyncHandler(async (req, res) => {
   });
   res.json({ success: true, newCount });
 });
+
+// Save guest congratulation message
+exports.saveGuestMessage = asyncHandler(async (req, res) => {
+  const { verificationCode } = req.params;
+  const { message } = req.body;
+  const guest = await Guest.findOne({ verificationCode, isDeleted: false });
+  if (!guest) return res.status(404).json({ success: false, message: 'Invalid code.' });
+  guest.guestMessage = message?.trim()?.substring(0, 500) || '';
+  guest.messageAt = new Date();
+  await guest.save({ validateBeforeSave: false });
+  res.json({ success: true });
+});

@@ -297,6 +297,19 @@ exports.generateAllCards = asyncHandler(async (req, res) => {
             y: height * (1 - qrPctY) - qrSize / 2,
             width: qrSize, height: qrSize,
           });
+
+          // Draw ticket label above QR
+          const labelFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+          const label = guest.ticketLabel || guest.ticketType.toUpperCase();
+          const labelSize = 14;
+          const labelWidth = labelFont.widthOfTextAtSize(label, labelSize);
+          page.drawText(label, {
+            x: width * qrPctX - labelWidth / 2,
+            y: height * (1 - qrPctY) + qrSize / 2 + 5,
+            size: labelSize,
+            font: labelFont,
+            color: rgb(nameColor.r, nameColor.g, nameColor.b),
+          });
         }
 
         const pdfBytes = await pdfDoc.save();

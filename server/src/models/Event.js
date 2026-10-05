@@ -68,6 +68,9 @@ const eventSchema = new mongoose.Schema({
   // RSVP Deadline — guests cannot confirm/decline after this date
   rsvpDeadline: { type: Date, default: null },
 
+  // Custom welcome message shown on event website
+  welcomeMessage: { type: String, trim: true, default: '' },
+
   // Dress Code Images
   dressCodeImages: [{
     url: { type: String },

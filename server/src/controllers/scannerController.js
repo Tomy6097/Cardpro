@@ -211,13 +211,13 @@ exports.getScannerEvents = asyncHandler(async (req, res) => {
 
   if (user.role === 'admin') {
     const Event = require('../models/Event');
-    events = await Event.find({ status: 'active' }).select('name slug date time venue status').sort({ date: 1 });
+    events = await Event.find({ status: 'active' }).select('name slug date time venue status securityPin').sort({ date: 1 });
   } else {
     const Event = require('../models/Event');
     events = await Event.find({
       _id: { $in: user.assignedEvents },
       status: 'active',
-    }).select('name slug date time venue status').sort({ date: 1 });
+    }).select('name slug date time venue status securityPin').sort({ date: 1 });
   }
 
   res.json({ success: true, events });

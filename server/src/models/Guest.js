@@ -44,6 +44,8 @@ const guestSchema = new mongoose.Schema({
   },
   rsvpAt: Date,
   declineReason: { type: String, trim: true, default: '' },
+  guestMessage: { type: String, trim: true, default: '' },
+  messageAt: { type: Date },
 
   // Messaging
   messageStatus: {

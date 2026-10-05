@@ -26,6 +26,11 @@ const T = {
     envelopeTitle: 'Mwaliko Maalum', envelopeHint: 'Bonyeza Kuona kadi yako ya mwaliko',
     openBtn: 'Bonyeza Hapa', closeEnv: 'Funga', downloadCard: 'Pakua Mwaliko',
     poweredBy: 'Imetolewa na', ticket: 'TIKETI', scroll: 'Tazama',
+    welcomeLabel: 'Ujumbe Maalum',
+    greetingTitle: 'Tuma Ujumbe kwa Harusi',
+    greetingPlaceholder: 'Andika ujumbe wako wa furaha kwa wanandoa...',
+    greetingBtn: 'Tuma Ujumbe',
+    greetingSent: 'Ujumbe wako umetumwa!',
   },
   en: {
     loading: 'Loading...', notFound: 'Event Not Found',
@@ -48,6 +53,11 @@ const T = {
     envelopeTitle: 'Special Invitation', envelopeHint: 'Click to open your invitation',
     openBtn: 'Click Here', closeEnv: 'Close', downloadCard: 'Download Card',
     poweredBy: 'Powered by', ticket: 'TICKET', scroll: 'Scroll',
+    welcomeLabel: 'A Message for You',
+    greetingTitle: 'Send a Message to the Couple',
+    greetingPlaceholder: 'Write your wishes for the happy couple...',
+    greetingBtn: 'Send Message',
+    greetingSent: 'Your message has been sent!',
   },
 };
 
@@ -263,9 +273,11 @@ const EventWebsite = () => {
   const [rsvpDeclined, setRsvpDeclined] = useState(false);
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+  const [guestMsg, setGuestMsg] = useState('');
+  const [msgSent, setMsgSent] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
   const [settings, setSettings] = useState(null);
-  const [lang,    setLang]    = useState('sw'); // 'sw' | 'en'
+  const [lang,    setLang]    = useState('en'); // 'sw' | 'en'
   const heroRef = useRef(null);
 
   const t = T[lang];
@@ -326,6 +338,18 @@ const EventWebsite = () => {
       return new Date(d).toLocaleDateString(lang==='sw'?'sw-TZ':'en-US',
         {weekday:'long',year:'numeric',month:'long',day:'numeric'});
     } catch { return d; }
+  };
+
+  const sendGuestMessage = async () => {
+    if (!guestMsg.trim() || !code) return;
+    try {
+      await fetch(`${API}/rsvp/message/${code}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: guestMsg.trim() }),
+      });
+      setMsgSent(true);
+    } catch {}
   };
 
   const handleDownload = async () => {
@@ -636,19 +660,43 @@ const EventWebsite = () => {
               </div>
             )}
 
-            {/* Google Maps */}
-            {event.googleMapsUrl && (
-              <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
-                display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-                marginTop:'20px',padding:'13px',borderRadius:'12px',
-                background:'rgba(255,255,255,0.04)',border:`1px solid ${ac}0f`,
-                color:`${ac}55`,textDecoration:'none',fontSize:'13px',
-                fontFamily:'Inter,sans-serif',transition:'all .25s',
-              }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                {t.mapsBtn}
-              </a>
-            )}
+            {/* Google Maps embed + link */}
+            {event.googleMapsUrl && (() => {
+              let embedUrl = '';
+              try {
+                const url = event.googleMapsUrl;
+                if (url.includes('maps/embed')) {
+                  embedUrl = url;
+                } else {
+                  const encoded = encodeURIComponent(url);
+                  embedUrl = `https://maps.google.com/maps?q=${encoded}&output=embed`;
+                }
+              } catch {}
+              return (
+                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
+                  {embedUrl && (
+                    <iframe
+                      src={embedUrl}
+                      width="100%"
+                      height="220"
+                      style={{border:'none',display:'block'}}
+                      allowFullScreen=""
+                      loading="lazy"
+                      title="Location Map"
+                    />
+                  )}
+                  <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+                    padding:'11px',background:'rgba(255,255,255,0.04)',
+                    color:`${ac}55`,textDecoration:'none',fontSize:'13px',
+                    fontFamily:'Inter,sans-serif',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {t.mapsBtn}
+                  </a>
+                </div>
+              );
+            })()}
           </div>
           <div style={{height:'2px',background:`linear-gradient(90deg,transparent,${pc},transparent)`}}/>
         </div>
@@ -722,10 +770,46 @@ const EventWebsite = () => {
           </div>
         )}
 
+        {/* Welcome Message */}
+        {event.welcomeMessage && (
+          <div style={{background:'rgba(255,255,255,0.04)',borderRadius:'16px',padding:'22px',border:`1px solid ${pc}22`,marginBottom:'20px',animation:'fadeUp .8s .7s both',textAlign:'center'}}>
+            <p style={{color:`${pc}88`,fontSize:'10px',textTransform:'uppercase',letterSpacing:'3px',margin:'0 0 10px',fontFamily:'Inter,sans-serif'}}>{t.welcomeLabel}</p>
+            <p style={{color:`${ac}bb`,fontSize:'16px',lineHeight:1.9,margin:0,fontFamily:ff,fontStyle:'italic'}}>"{event.welcomeMessage}"</p>
+          </div>
+        )}
+
         {/* Description */}
         {event.description && (
           <div style={{background:'rgba(255,255,255,0.02)',borderRadius:'16px',padding:'20px',border:`1px solid ${ac}08`,marginBottom:'20px',animation:'fadeUp .8s .7s both'}}>
             <p style={{color:`${ac}88`,fontSize:'15px',lineHeight:1.9,margin:0,fontFamily:ff}}>{event.description}</p>
+          </div>
+        )}
+
+        {/* Guest Message to Couple */}
+        {guest && code && !msgSent && (
+          <div style={{background:'rgba(255,255,255,0.03)',borderRadius:'16px',padding:'20px',border:`1px solid ${ac}0d`,marginBottom:'20px',animation:'fadeUp .8s .8s both'}}>
+            <p style={{color:`${ac}44`,fontSize:'10px',textTransform:'uppercase',letterSpacing:'3px',margin:'0 0 14px',fontFamily:'Inter,sans-serif'}}>{t.greetingTitle}</p>
+            <textarea
+              value={guestMsg}
+              onChange={e=>setGuestMsg(e.target.value)}
+              placeholder={t.greetingPlaceholder}
+              rows={3}
+              style={{width:'100%',padding:'12px',background:'rgba(255,255,255,0.06)',border:`1px solid ${ac}18`,borderRadius:'10px',color:`${ac}cc`,fontSize:'14px',fontFamily:'Inter,sans-serif',outline:'none',resize:'vertical',boxSizing:'border-box',marginBottom:'12px',lineHeight:1.6}}
+              onFocus={e=>e.target.style.borderColor=pc}
+              onBlur={e=>e.target.style.borderColor=`${ac}18`}
+            />
+            <button
+              onClick={sendGuestMessage}
+              disabled={!guestMsg.trim()}
+              style={{width:'100%',padding:'12px',background:guestMsg.trim()?`linear-gradient(135deg,${pc}cc,${pc})`:'rgba(255,255,255,0.1)',color:guestMsg.trim()?bg:'rgba(255,255,255,0.3)',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:600,cursor:guestMsg.trim()?'pointer':'not-allowed',fontFamily:ff,transition:'all .25s'}}
+            >
+              {t.greetingBtn}
+            </button>
+          </div>
+        )}
+        {msgSent && (
+          <div style={{background:'rgba(22,101,52,0.15)',borderRadius:'16px',padding:'16px',textAlign:'center',border:'1px solid rgba(22,101,52,0.3)',marginBottom:'20px',animation:'fadeIn .5s'}}>
+            <p style={{color:'#4ade80',fontSize:'14px',margin:0,fontWeight:600,fontFamily:ff}}>{t.greetingSent}</p>
           </div>
         )}
 

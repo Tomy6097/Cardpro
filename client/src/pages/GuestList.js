@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { guestsAPI, eventsAPI, cardsAPI } from '../api';import toast from 'react-hot-toast';
+import { guestsAPI, eventsAPI, cardsAPI, rsvpAPI } from '../api';import toast from 'react-hot-toast';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
 import Input, { Select } from '../components/common/Input';
@@ -244,6 +244,15 @@ const GuestList = () => {
   });
   const qrProgress = qrProgressData?.status === 'running' ? qrProgressData : null;
 
+  // Live RSVP stats — poll every 10s
+  const { data: rsvpStatsData } = useQuery({
+    queryKey: ['rsvp-stats-live', eventId],
+    queryFn: () => rsvpAPI.getStats(eventId).then(r => r.data),
+    refetchInterval: 10000,
+  });
+  const rsvpConfirmed = rsvpStatsData?.stats?.confirmed || 0;
+  const rsvpTotal     = rsvpStatsData?.stats?.total     || 0;
+
   const handleImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -401,6 +410,19 @@ const GuestList = () => {
           <a href={`/events/${eventId}/cards`} style={{ padding: '5px 14px', background: '#4F46E5', color: 'white', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
             Generate Cards
           </a>
+        </div>
+      )}
+
+      {/* Live RSVP counter */}
+      {rsvpTotal > 0 && (
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--border-light)', padding: '10px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>Live RSVP</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--success)', whiteSpace: 'nowrap' }}>{rsvpConfirmed} confirmed</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>of {rsvpTotal}</span>
+          <div style={{ flex: 1, height: '6px', background: 'var(--cream-dark)', borderRadius: '4px', overflow: 'hidden', minWidth: '60px' }}>
+            <div style={{ width: `${Math.round((rsvpConfirmed / rsvpTotal) * 100)}%`, height: '100%', background: 'var(--success)', borderRadius: '4px', transition: 'width .8s ease' }} />
+          </div>
+          <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 600, whiteSpace: 'nowrap' }}>{Math.round((rsvpConfirmed / rsvpTotal) * 100)}%</span>
         </div>
       )}
 

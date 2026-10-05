@@ -18,7 +18,7 @@ const CardGenerator = () => {
   const [activeElement, setActiveElement] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [sampleName] = useState('Tomy Johnson');
+  const [sampleName] = useState('Tomy James');
   const [previewMode, setPreviewMode] = useState(false);
 
   const { data: eventData, isLoading } = useQuery({

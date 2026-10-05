@@ -55,6 +55,9 @@ const Scanner = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [mode, setMode] = useState('camera');
   const [cameraOn, setCameraOn] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinVerified, setPinVerified] = useState(false);
   const scanLock = useRef(false);
   const webcamRef = useRef(null);
   const scanInterval = useRef(null);
@@ -93,6 +96,17 @@ const Scanner = () => {
     scanLock.current = true;
     scanMutation.mutate({ token: token.trim(), eventId: selectedEvent._id });
   }, [selectedEvent, scanMutation]);
+
+  const verifyPin = () => {
+    if (!pinInput.trim()) { setPinError('Please enter the PIN.'); return; }
+    if (pinInput.trim() === String(selectedEvent.securityPin)) {
+      setPinVerified(true);
+      setPinError('');
+    } else {
+      setPinError('Incorrect PIN. Please try again.');
+      setPinInput('');
+    }
+  };
 
   // jsQR scanning loop
   const startScanLoop = useCallback(async () => {
@@ -167,7 +181,7 @@ const Scanner = () => {
         {events.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No active events assigned.</p>
         ) : events.map(ev => (
-          <div key={ev._id} onClick={() => setSelectedEvent(ev)} style={{
+          <div key={ev._id} onClick={() => { setSelectedEvent(ev); setPinVerified(false); setPinInput(''); setPinError(''); }} style={{
             background: 'var(--white)', borderRadius: 'var(--radius)', padding: '18px 20px',
             marginBottom: '10px', cursor: 'pointer', border: '1px solid var(--border-light)',
             boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -179,6 +193,58 @@ const Scanner = () => {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
         ))}
+      </div>
+    </div>
+  );
+
+  // PIN verification screen
+  if (selectedEvent && !pinVerified) return (
+    <div style={{ minHeight: '100vh', background: 'var(--cream)', fontFamily: 'Inter', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--primary-dark)', padding: '16px 20px' }}>
+        <h2 style={{ fontFamily: 'Poppins', fontSize: '18px', fontWeight: 700, color: 'white', margin: 0 }}>{selectedEvent.name}</h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: '2px 0 0' }}>Enter event PIN to continue</p>
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius-lg)', padding: '32px 28px', boxShadow: 'var(--shadow-lg)', width: '100%', maxWidth: '360px', textAlign: 'center' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+          </div>
+          <h3 style={{ fontFamily: 'Poppins', fontSize: '18px', fontWeight: 700, color: 'var(--primary-dark)', margin: '0 0 6px' }}>Event PIN Required</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '0 0 24px' }}>Enter the PIN for <strong>{selectedEvent.name}</strong></p>
+          <input
+            type="password"
+            inputMode="numeric"
+            placeholder="Enter PIN..."
+            value={pinInput}
+            autoFocus
+            onChange={e => { setPinInput(e.target.value); setPinError(''); }}
+            onKeyPress={e => { if (e.key === 'Enter') verifyPin(); }}
+            style={{
+              width: '100%', padding: '14px', textAlign: 'center',
+              border: `2px solid ${pinError ? 'var(--danger)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius)', fontSize: '22px', letterSpacing: '8px',
+              outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
+              fontFamily: 'Poppins', transition: 'border-color .2s',
+            }}
+            onFocus={e => { if (!pinError) e.target.style.borderColor = 'var(--primary)'; }}
+            onBlur={e => { if (!pinError) e.target.style.borderColor = 'var(--border)'; }}
+          />
+          {pinError && <p style={{ color: 'var(--danger)', fontSize: '13px', margin: '0 0 12px', fontWeight: 500 }}>{pinError}</p>}
+          <button
+            onClick={verifyPin}
+            style={{ width: '100%', padding: '14px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '15px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Poppins', marginBottom: '12px', transition: 'all .2s' }}
+          >
+            Continue to Scanner
+          </button>
+          <button
+            onClick={() => setSelectedEvent(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter' }}
+          >
+            ← Back to events
+          </button>
+        </div>
       </div>
     </div>
   );
