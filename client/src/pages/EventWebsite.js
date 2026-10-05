@@ -679,7 +679,10 @@ const EventWebsite = () => {
                   if (coordMatch) {
                     const lat = coordMatch[1];
                     const lng = coordMatch[2];
-                    embedUrl = `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+                    // Extract zoom level from URL or default to 16
+                    const zoomMatch = url.match(/@-?\d+\.?\d*,-?\d+\.?\d*,(\d+)z/);
+                    const zoom = zoomMatch ? zoomMatch[1] : '16';
+                    embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
                   } else {
                     // Extract place or query from URL
                     const placeMatch = url.match(/place\/([^/@]+)/);
@@ -687,13 +690,18 @@ const EventWebsite = () => {
                     const term = placeMatch ? decodeURIComponent(placeMatch[1].replace(/\+/g,' '))
                                 : queryMatch ? decodeURIComponent(queryMatch[1])
                                 : null;
-                    if (term) embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(term)}&output=embed`;
+                    if (term) embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(term)}&z=16&output=embed`;
                   }
                 }
-                // Case 3: short URL goo.gl or maps.app.goo.gl — use as query
+                // Case 3: short URL or unknown — extract any coordinates or use as query
                 else {
-                  // Fallback: try to embed as search query
-                  embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+                  // Try to find coordinates anywhere in the URL
+                  const coordMatch = url.match(/(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);
+                  if (coordMatch) {
+                    embedUrl = `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&z=16&output=embed`;
+                  } else {
+                    embedUrl = `https://www.google.com/maps?q=${encodeURIComponent(url)}&z=16&output=embed`;
+                  }
                 }
               } catch {}
 
