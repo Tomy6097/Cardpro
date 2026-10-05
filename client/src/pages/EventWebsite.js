@@ -7,7 +7,7 @@ const API = process.env.REACT_APP_API_URL || '/api';
 const T = {
   sw: {
     loading: 'Inapakia...', notFound: 'Tukio Halipatikani',
-    dear: 'Mpendwa', invitedTo: 'Umealikwa Kwenye', by: 'na',
+    dear: 'Mpendwa', invitedTo: 'Unaalikwa Kushiriki', by: 'Sherehe ya:',
     date: 'Tarehe', venue: 'Mahali', dressCode: 'Mavazi',
     countdown: 'Muda Uliosalia', days: 'Siku', hours: 'Saa', mins: 'Dakika', secs: 'Sekunde',
     happeningNow: 'Sherehe inaendelea sasa!',
