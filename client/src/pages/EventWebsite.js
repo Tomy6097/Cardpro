@@ -678,8 +678,8 @@ const EventWebsite = () => {
                 const bbox = 0.008;
                 osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`;
               } else {
-                // No coordinates — search by venue name on OpenStreetMap
-                const query = encodeURIComponent(event.venue);
+                // No coordinates — search by venue name using Nominatim bbox
+                const query = encodeURIComponent(event.venue + ', Tanzania');
                 osmEmbed = `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
               }
 
