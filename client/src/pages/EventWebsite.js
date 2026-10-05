@@ -665,48 +665,41 @@ const EventWebsite = () => {
 
             {/* Google Maps / Location */}
             {event.googleMapsUrl && (() => {
-              // Only embed if it's a real Google Maps URL
               const url = event.googleMapsUrl;
-              const isGoogleMaps = url.includes('google.com/maps') || url.includes('maps.google') || url.includes('goo.gl/maps') || url.includes('maps.app.goo.gl');
 
-              // Extract coords for OpenStreetMap embed fallback
-              let osmEmbed = '';
+              // Extract lat,lng from full Google Maps URL
               const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+              let osmEmbed = '';
               if (coordMatch) {
+                // Has coordinates — use OpenStreetMap
                 const lat = parseFloat(coordMatch[1]);
                 const lng = parseFloat(coordMatch[2]);
-                const zoomMatch = url.match(/,(\d+)z/);
-                const zoom = zoomMatch ? parseInt(zoomMatch[1]) : 16;
-                const bbox = 0.01;
+                const bbox = 0.008;
                 osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`;
+              } else {
+                // No coordinates — search by venue name on OpenStreetMap
+                const query = encodeURIComponent(event.venue);
+                osmEmbed = `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
               }
 
               return (
                 <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
-                  {osmEmbed ? (
-                    <iframe
-                      src={osmEmbed}
-                      width="100%"
-                      height="240"
-                      style={{border:'none',display:'block'}}
-                      allowFullScreen=""
-                      loading="lazy"
-                      title="Location Map"
-                    />
-                  ) : (
-                    /* No coords available — show placeholder */
-                    <div style={{height:'100px',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'8px'}}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      <p style={{color:`${ac}33`,fontSize:'12px',fontFamily:'Inter,sans-serif',margin:0}}>{event.venue}</p>
-                    </div>
-                  )}
-                  <a href={isGoogleMaps ? url : `https://maps.google.com/maps?q=${encodeURIComponent(event.venue)}`}
-                    target="_blank" rel="noreferrer" style={{
-                      display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-                      padding:'12px',background:'rgba(255,255,255,0.04)',
-                      color:`${ac}66`,textDecoration:'none',fontSize:'13px',
-                      fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
-                    }}>
+                  <iframe
+                    src={osmEmbed}
+                    width="100%"
+                    height="240"
+                    style={{border:'none',display:'block'}}
+                    allowFullScreen=""
+                    loading="lazy"
+                    title="Location Map"
+                  />
+                  <a href={url} target="_blank" rel="noreferrer" style={{
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+                    padding:'12px',background:'rgba(255,255,255,0.04)',
+                    color:`${ac}66`,textDecoration:'none',fontSize:'13px',
+                    fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
+                  }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     {t.mapsBtn}
                   </a>
