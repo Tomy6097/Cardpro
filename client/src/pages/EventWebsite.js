@@ -663,61 +663,50 @@ const EventWebsite = () => {
               </div>
             )}
 
-            {/* Google Maps embed + link */}
+            {/* Google Maps / Location */}
             {event.googleMapsUrl && (() => {
-              let embedUrl = '';
-              try {
-                const url = event.googleMapsUrl;
+              // Only embed if it's a real Google Maps URL
+              const url = event.googleMapsUrl;
+              const isGoogleMaps = url.includes('google.com/maps') || url.includes('maps.google') || url.includes('goo.gl/maps') || url.includes('maps.app.goo.gl');
 
-                // Case 1: Already proper embed URL
-                if (url.includes('output=embed') || url.includes('maps/embed')) {
-                  embedUrl = url;
-                }
-                // Case 2: Full Google Maps URL with coordinates @lat,lng,zoom
-                else if (url.includes('google.com/maps') && url.includes('@')) {
-                  const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+),(\d+)/);
-                  if (m) {
-                    // Use Google Maps Embed API v1 with lat/lng
-                    embedUrl = `https://www.google.com/maps/embed/v1/view?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&center=${m[1]},${m[2]}&zoom=${m[3]}&maptype=roadmap`;
-                  }
-                }
-                // Case 3: Full URL with place
-                else if (url.includes('google.com/maps/place')) {
-                  const placeMatch = url.match(/place\/([^/@?]+)/);
-                  if (placeMatch) {
-                    const place = decodeURIComponent(placeMatch[1]).replace(/\+/g,' ');
-                    embedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q=${encodeURIComponent(place)}`;
-                  }
-                }
-              } catch {}
+              // Extract coords for OpenStreetMap embed fallback
+              let osmEmbed = '';
+              const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+              if (coordMatch) {
+                const lat = parseFloat(coordMatch[1]);
+                const lng = parseFloat(coordMatch[2]);
+                const zoomMatch = url.match(/,(\d+)z/);
+                const zoom = zoomMatch ? parseInt(zoomMatch[1]) : 16;
+                const bbox = 0.01;
+                osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`;
+              }
 
-              // If embed URL couldn't be built, just show the link button
               return (
                 <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
-                  {embedUrl ? (
-                    <div style={{position:'relative',width:'100%',height:'240px'}}>
-                      <iframe
-                        src={embedUrl}
-                        width="100%"
-                        height="240"
-                        style={{border:'none',display:'block'}}
-                        allowFullScreen=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Location Map"
-                      />
-                    </div>
+                  {osmEmbed ? (
+                    <iframe
+                      src={osmEmbed}
+                      width="100%"
+                      height="240"
+                      style={{border:'none',display:'block'}}
+                      allowFullScreen=""
+                      loading="lazy"
+                      title="Location Map"
+                    />
                   ) : (
-                    <div style={{height:'80px',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <p style={{color:`${ac}33`,fontSize:'12px',fontFamily:'Inter,sans-serif'}}>Map preview not available for this URL type</p>
+                    /* No coords available — show placeholder */
+                    <div style={{height:'100px',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'8px'}}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <p style={{color:`${ac}33`,fontSize:'12px',fontFamily:'Inter,sans-serif',margin:0}}>{event.venue}</p>
                     </div>
                   )}
-                  <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
-                    display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-                    padding:'12px',background:'rgba(255,255,255,0.04)',
-                    color:`${ac}66`,textDecoration:'none',fontSize:'13px',
-                    fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
-                  }}>
+                  <a href={isGoogleMaps ? url : `https://maps.google.com/maps?q=${encodeURIComponent(event.venue)}`}
+                    target="_blank" rel="noreferrer" style={{
+                      display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+                      padding:'12px',background:'rgba(255,255,255,0.04)',
+                      color:`${ac}66`,textDecoration:'none',fontSize:'13px',
+                      fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
+                    }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     {t.mapsBtn}
                   </a>
