@@ -171,10 +171,19 @@ const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       maxPoolSize: 10,
-      // Force Google DNS by using SRV lookup manually handled by mongoose
-      family: 4, // Force IPv4
+      family: 4,
     });
     logger.info('MongoDB connected successfully');
+
+    // Drop old phone-only unique index if it exists (replaced by name+phone index)
+    try {
+      const Guest = mongoose.model('Guest');
+      await Guest.collection.dropIndex('event_1_phone_1');
+      logger.info('Dropped old phone-only unique index');
+    } catch (e) {
+      // Index doesn't exist — that's fine
+    }
+
     await seedAdmin();
   } catch (err) {
     logger.error('MongoDB connection error:', err.message);

@@ -300,6 +300,7 @@ const GuestList = () => {
 
   const guests = data?.guests || [];
   const pagination = data?.pagination || {};
+  const totalHeadcount = data?.totalHeadcount;
   const event = eventData?.event;
   const toggleSelect = (id) => {
     const s = new Set(selected);
@@ -326,6 +327,11 @@ const GuestList = () => {
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>
             {pagination.total || 0} guests {showDeleted ? '(deleted)' : ''}
+            {totalHeadcount && totalHeadcount !== pagination.total ? (
+              <span style={{ marginLeft: '6px', color: 'var(--primary)', fontWeight: 600 }}>
+                · {totalHeadcount} total people (including Double/Family)
+              </span>
+            ) : null}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

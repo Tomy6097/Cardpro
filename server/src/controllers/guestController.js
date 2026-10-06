@@ -394,6 +394,8 @@ exports.getGuests = asyncHandler(async (req, res) => {
     success: true,
     guests,
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) },
+    // Total headcount including ticket capacity (Double=2, Family=4)
+    totalHeadcount: guests.reduce((sum, g) => sum + (TICKET_CAPACITY[g.ticketType] || 1), 0),
   });
 });
 
