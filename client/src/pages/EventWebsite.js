@@ -62,7 +62,7 @@ const T = {
 };
 
 // ── CSS Keyframes ─────────────────────────────────────────────
-const STYLES = `
+const STYLES = (pc = '#C9A84C', bg = '#0d0500') => `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500;600&display=swap');
   @keyframes fadeUp   { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
@@ -70,7 +70,7 @@ const STYLES = `
   @keyframes bounce   { 0%,100%{transform:translateX(-50%) translateY(0);opacity:.6} 50%{transform:translateX(-50%) translateY(10px);opacity:1} }
   @keyframes dot      { 0%,80%,100%{opacity:.3;transform:scale(1)} 40%{opacity:1;transform:scale(1.4)} }
   @keyframes pulse    { 0%,100%{transform:scale(1);opacity:.8} 50%{transform:scale(1.06);opacity:1} }
-  @keyframes glow     { 0%,100%{box-shadow:0 0 20px rgba(201,168,76,0.3)} 50%{box-shadow:0 0 40px rgba(201,168,76,0.7)} }
+  @keyframes glow     { 0%,100%{box-shadow:0 0 20px ${pc}44} 50%{box-shadow:0 0 40px ${pc}99} }
   @keyframes flapOpen {
     0%   { transform: perspective(800px) rotateX(0deg);   }
     100% { transform: perspective(800px) rotateX(-180deg); }
@@ -84,10 +84,17 @@ const STYLES = `
     60%  { left:120%;  }
     100% { left:120%;  }
   }
+  /* Scrollbar matches website theme */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: ${bg}; }
+  ::-webkit-scrollbar-thumb { background: ${pc}66; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: ${pc}; }
+  html { scrollbar-color: ${pc}66 ${bg}; scrollbar-width: thin; }
+
   .env-hover:hover { transform:translateY(-6px) scale(1.01) !important; }
   .btn-gold:hover  { filter:brightness(1.12); transform:translateY(-2px); }
   .lang-btn        { background:transparent; border:none; cursor:pointer; font-size:12px; font-weight:600; letter-spacing:1px; padding:5px 10px; border-radius:20px; transition:all .2s; }
-  .lang-btn.active { background:rgba(201,168,76,0.25); color:#C9A84C; }
+  .lang-btn.active { background:${pc}25; color:${pc}; }
 `;
 
 // ── Envelope Component ────────────────────────────────────────
@@ -389,7 +396,6 @@ const EventWebsite = () => {
     } catch { window.open(guest.cardUrl,'_blank'); }
   };
 
-  // ── Loading ──────────────────────────────────────────────────
   if (loading) return (
     <div style={{minHeight:'100vh',background:'#0d0500',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center'}}>
@@ -399,14 +405,14 @@ const EventWebsite = () => {
         <p style={{color:'rgba(255,255,255,0.4)',fontFamily:'Inter,sans-serif',fontSize:'14px',letterSpacing:'2px',textTransform:'uppercase'}}>
           {t.loading}
         </p>
-        <style>{STYLES}</style>
+        <style>{STYLES()}</style>
       </div>
     </div>
   );
 
   if (error||!event) return (
     <div style={{minHeight:'100vh',background:'#0d0500',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
-      <style>{STYLES}</style>
+      <style>{STYLES()}</style>
       <div style={{textAlign:'center',color:'white',fontFamily:'sans-serif'}}>
         <h2 style={{color:'#C9A84C'}}>{t.notFound}</h2>
         <p style={{color:'rgba(255,255,255,0.4)',fontSize:'14px'}}>{error}</p>
@@ -429,7 +435,7 @@ const EventWebsite = () => {
 
   return (
     <div style={{minHeight:'100vh',background:bg,fontFamily:ff,overflowX:'hidden'}}>
-      <style>{STYLES}</style>
+      <style>{STYLES(pc, bg)}</style>
 
       {/* ── LANGUAGE SWITCHER ── fixed top-right */}
       <div style={{
