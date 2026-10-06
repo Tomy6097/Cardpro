@@ -669,75 +669,54 @@ const EventWebsite = () => {
               </div>
             )}
 
-            {/* Location — click opens Google Maps directly */}
+            {/* Location */}
             {event.googleMapsUrl && (() => {
               const url = event.googleMapsUrl;
-
-              // Extract lat,lng for static map thumbnail
               const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-              let staticMap = null;
+              let osmEmbed = '';
               if (coordMatch) {
-                const lat = coordMatch[1];
-                const lng = coordMatch[2];
-                // OpenStreetMap static tile — no API key needed
-                const zoom = 16;
-                const tileX = Math.floor((parseFloat(lng) + 180) / 360 * Math.pow(2, zoom));
-                const tileY = Math.floor((1 - Math.log(Math.tan(parseFloat(lat) * Math.PI / 180) + 1 / Math.cos(parseFloat(lat) * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
-                staticMap = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+                const lat = parseFloat(coordMatch[1]);
+                const lng = parseFloat(coordMatch[2]);
+                const bbox = 0.004;
+                osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`;
+              } else {
+                osmEmbed = `https://www.openstreetmap.org/export/embed.html?query=${encodeURIComponent(event.venue + ', Tanzania')}&layer=mapnik`;
               }
-
               return (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    display:'block',
-                    marginTop:'20px',
-                    borderRadius:'12px',
-                    overflow:'hidden',
-                    border:`1px solid ${ac}0f`,
-                    textDecoration:'none',
-                    cursor:'pointer',
-                  }}
-                >
-                  {/* Map thumbnail or venue name block */}
-                  <div style={{
-                    position:'relative',
-                    height:'200px',
-                    background:'#e8e0d8',
-                    overflow:'hidden',
-                  }}>
-                    {staticMap ? (
-                      <img
-                        src={staticMap}
-                        alt="Map"
-                        style={{width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(0.8)'}}
-                        onError={e => { e.target.style.display='none'; }}
-                      />
-                    ) : (
-                      <div style={{width:'100%',height:'100%',background:`${bg}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      </div>
-                    )}
-                    {/* Overlay with venue name + click to open hint */}
+                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
+                  <div style={{position:'relative'}}>
+                    <iframe
+                      src={osmEmbed}
+                      width="100%"
+                      height="240"
+                      style={{border:'none',display:'block'}}
+                      allowFullScreen=""
+                      loading="lazy"
+                      title="Location Map"
+                    />
+                    {/* Venue name badge */}
                     <div style={{
-                      position:'absolute',inset:0,
-                      background:'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 100%)',
-                      display:'flex',flexDirection:'column',justifyContent:'flex-end',
-                      padding:'14px',
+                      position:'absolute',top:'10px',left:'50%',transform:'translateX(-50%)',
+                      background:'rgba(0,0,0,0.75)',backdropFilter:'blur(8px)',
+                      color:'white',fontSize:'12px',fontWeight:600,
+                      padding:'5px 14px',borderRadius:'20px',fontFamily:'Inter,sans-serif',
+                      whiteSpace:'nowrap',maxWidth:'90%',overflow:'hidden',textOverflow:'ellipsis',
+                      pointerEvents:'none',border:`1px solid ${pc}66`,
                     }}>
-                      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill={pc} stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                        <span style={{color:'white',fontSize:'14px',fontWeight:600,fontFamily:ff}}>{event.venue}</span>
-                      </div>
-                      <span style={{color:'rgba(255,255,255,0.6)',fontSize:'11px',fontFamily:'Inter,sans-serif',marginTop:'3px',display:'flex',alignItems:'center',gap:'4px'}}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        {t.mapsBtn}
-                      </span>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill={pc} stroke="none" style={{marginRight:'5px',verticalAlign:'middle'}}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                      {event.venue}
                     </div>
                   </div>
-                </a>
+                  <a href={url} target="_blank" rel="noreferrer" style={{
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+                    padding:'12px',background:'rgba(255,255,255,0.04)',
+                    color:`${ac}66`,textDecoration:'none',fontSize:'13px',
+                    fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {t.mapsBtn}
+                  </a>
+                </div>
               );
             })()}
           </div>
