@@ -1,6 +1,7 @@
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 const Guest = require('../models/Guest');
+const { TICKET_CAPACITY } = Guest;
 const Event = require('../models/Event');
 const { logActivity } = require('../utils/activityLogger');
 const { generateQRToken, generateQRCodeBuffer } = require('../utils/qrGenerator');
