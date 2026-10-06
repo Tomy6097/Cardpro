@@ -112,6 +112,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/maps', require('./routes/maps'));
 
 // Root route
 app.get('/', (req, res) => {

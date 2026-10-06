@@ -273,6 +273,8 @@ const EventWebsite = () => {
   const [rsvpDeclined, setRsvpDeclined] = useState(false);
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+  const [mapEmbed, setMapEmbed] = useState(null);
+  const [mapResolved, setMapResolved] = useState(false);
   const [guestMsg, setGuestMsg] = useState('');
   const [msgSent, setMsgSent] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
@@ -339,6 +341,27 @@ const EventWebsite = () => {
         {weekday:'long',year:'numeric',month:'long',day:'numeric'});
     } catch { return d; }
   };
+
+  useEffect(() => {
+    // Resolve Google Maps short URL to get proper embed
+    if (!event?.googleMapsUrl || mapResolved) return;
+    setMapResolved(true);
+    const url = event.googleMapsUrl;
+    // If URL already has coordinates, extract directly
+    const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      const bbox = 0.004;
+      setMapEmbed(`https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`);
+    } else {
+      // Resolve short URL via backend
+      fetch(`${API}/maps/resolve?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(d => { if (d.osmEmbed) setMapEmbed(d.osmEmbed); })
+        .catch(() => {});
+    }
+  }, [event?.googleMapsUrl, mapResolved]);
 
   const sendGuestMessage = async () => {
     if (!guestMsg.trim() || !code) return;
@@ -664,31 +687,12 @@ const EventWebsite = () => {
             )}
 
             {/* Google Maps / Location */}
-            {event.googleMapsUrl && (() => {
-              const url = event.googleMapsUrl;
-
-              // Extract lat,lng from full Google Maps URL
-              const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-
-              let osmEmbed = '';
-              if (coordMatch) {
-                // Has coordinates — use OpenStreetMap
-                const lat = parseFloat(coordMatch[1]);
-                const lng = parseFloat(coordMatch[2]);
-                const bbox = 0.008;
-                osmEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-bbox},${lat-bbox},${lng+bbox},${lat+bbox}&layer=mapnik&marker=${lat},${lng}`;
-              } else {
-                // No coordinates — search by venue name using Nominatim bbox
-                const query = encodeURIComponent(event.venue + ', Tanzania');
-                osmEmbed = `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
-              }
-
-              return (
-                <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
-                  {/* Map with venue name overlay */}
-                  <div style={{position:'relative'}}>
+            {event.googleMapsUrl && (
+              <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
+                <div style={{position:'relative'}}>
+                  {mapEmbed ? (
                     <iframe
-                      src={osmEmbed}
+                      src={mapEmbed}
                       width="100%"
                       height="240"
                       style={{border:'none',display:'block'}}
@@ -696,44 +700,37 @@ const EventWebsite = () => {
                       loading="lazy"
                       title="Location Map"
                     />
-                    {/* Venue name badge overlay */}
-                    <div style={{
-                      position:'absolute',
-                      top:'10px',
-                      left:'50%',
-                      transform:'translateX(-50%)',
-                      background:'rgba(0,0,0,0.75)',
-                      backdropFilter:'blur(8px)',
-                      color:'white',
-                      fontSize:'12px',
-                      fontWeight:600,
-                      padding:'5px 14px',
-                      borderRadius:'20px',
-                      fontFamily:'Inter,sans-serif',
-                      whiteSpace:'nowrap',
-                      maxWidth:'90%',
-                      overflow:'hidden',
-                      textOverflow:'ellipsis',
-                      pointerEvents:'none',
-                      border:`1px solid ${pc}66`,
-                      boxShadow:'0 2px 12px rgba(0,0,0,0.4)',
-                    }}>
-                      <span style={{color:pc,marginRight:'6px'}}>📍</span>
-                      {event.venue}
+                  ) : (
+                    <div style={{height:'240px',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{display:'flex',gap:'6px'}}>
+                        {[0,1,2].map(i=><div key={i} style={{width:'8px',height:'8px',borderRadius:'50%',background:pc,animation:`dot 1.2s ${i*.2}s ease-in-out infinite`}}/>)}
+                      </div>
                     </div>
-                  </div>
-                  <a href={url} target="_blank" rel="noreferrer" style={{
-                    display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-                    padding:'12px',background:'rgba(255,255,255,0.04)',
-                    color:`${ac}66`,textDecoration:'none',fontSize:'13px',
-                    fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
+                  )}
+                  {/* Venue name badge */}
+                  <div style={{
+                    position:'absolute',top:'10px',left:'50%',transform:'translateX(-50%)',
+                    background:'rgba(0,0,0,0.75)',backdropFilter:'blur(8px)',
+                    color:'white',fontSize:'12px',fontWeight:600,
+                    padding:'5px 14px',borderRadius:'20px',fontFamily:'Inter,sans-serif',
+                    whiteSpace:'nowrap',maxWidth:'90%',overflow:'hidden',textOverflow:'ellipsis',
+                    pointerEvents:'none',border:`1px solid ${pc}66`,boxShadow:'0 2px 12px rgba(0,0,0,0.4)',
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    {t.mapsBtn}
-                  </a>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill={pc} stroke="none" style={{marginRight:'5px',verticalAlign:'middle'}}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    {event.venue}
+                  </div>
                 </div>
-              );
-            })()}
+                <a href={event.googleMapsUrl} target="_blank" rel="noreferrer" style={{
+                  display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+                  padding:'12px',background:'rgba(255,255,255,0.04)',
+                  color:`${ac}66`,textDecoration:'none',fontSize:'13px',
+                  fontFamily:'Inter,sans-serif',borderTop:`1px solid ${ac}0f`,
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={pc} strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {t.mapsBtn}
+                </a>
+              </div>
+            )}
           </div>
           <div style={{height:'2px',background:`linear-gradient(90deg,transparent,${pc},transparent)`}}/>
         </div>
