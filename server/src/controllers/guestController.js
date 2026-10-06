@@ -381,7 +381,7 @@ exports.getGuests = asyncHandler(async (req, res) => {
   if (scanStatus) filter.scanStatus = scanStatus;
   if (ticketType) filter.ticketType = ticketType;
   if (req.query.hasMessage === 'true') {
-    filter.guestMessage = { $exists: true, $ne: '', $ne: null };
+    filter.guestMessage = { $exists: true, $nin: ['', null] };
   }
 
   const skip = (Number(page) - 1) * Number(limit);

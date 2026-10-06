@@ -175,13 +175,17 @@ const connectDB = async () => {
     });
     logger.info('MongoDB connected successfully');
 
-    // Drop old phone-only unique index if it exists (replaced by name+phone index)
+    // Drop old phone-only unique index if it still exists
     try {
-      const Guest = mongoose.model('Guest');
-      await Guest.collection.dropIndex('event_1_phone_1');
-      logger.info('Dropped old phone-only unique index');
+      const guestCollection = mongoose.connection.collection('guests');
+      const indexes = await guestCollection.indexes();
+      const oldIndex = indexes.find(i => i.name === 'event_1_phone_1' && i.unique);
+      if (oldIndex) {
+        await guestCollection.dropIndex('event_1_phone_1');
+        logger.info('Dropped old phone-only unique index');
+      }
     } catch (e) {
-      // Index doesn't exist — that's fine
+      // Ignore — index may not exist
     }
 
     await seedAdmin();
