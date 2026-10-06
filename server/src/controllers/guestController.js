@@ -388,12 +388,15 @@ exports.getGuests = asyncHandler(async (req, res) => {
     Guest.countDocuments(filter),
   ]);
 
+  // Calculate total headcount from ALL matching guests (not just current page)
+  const allForHeadcount = await Guest.find(filter).select('ticketType').lean();
+  const totalHeadcount = allForHeadcount.reduce((sum, g) => sum + (TICKET_CAPACITY[g.ticketType] || 1), 0);
+
   res.json({
     success: true,
     guests,
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) },
-    // Total headcount including ticket capacity (Double=2, Family=4)
-    totalHeadcount: guests.reduce((sum, g) => sum + (TICKET_CAPACITY[g.ticketType] || 1), 0),
+    totalHeadcount,
   });
 });
 

@@ -328,8 +328,8 @@ const GuestList = () => {
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>
             {pagination.total || 0} guests {showDeleted ? '(deleted)' : ''}
             {totalHeadcount && totalHeadcount !== pagination.total ? (
-              <span style={{ marginLeft: '6px', color: 'var(--primary)', fontWeight: 600 }}>
-                · {totalHeadcount} total people (including Double/Family)
+              <span style={{ marginLeft: '8px', color: 'var(--primary)', fontWeight: 600, background: 'var(--cream-dark)', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                {totalHeadcount} people total
               </span>
             ) : null}
           </p>
