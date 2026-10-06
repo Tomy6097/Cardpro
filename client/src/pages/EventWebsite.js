@@ -685,15 +685,43 @@ const EventWebsite = () => {
 
               return (
                 <div style={{marginTop:'20px',borderRadius:'12px',overflow:'hidden',border:`1px solid ${ac}0f`}}>
-                  <iframe
-                    src={osmEmbed}
-                    width="100%"
-                    height="240"
-                    style={{border:'none',display:'block'}}
-                    allowFullScreen=""
-                    loading="lazy"
-                    title="Location Map"
-                  />
+                  {/* Map with venue name overlay */}
+                  <div style={{position:'relative'}}>
+                    <iframe
+                      src={osmEmbed}
+                      width="100%"
+                      height="240"
+                      style={{border:'none',display:'block'}}
+                      allowFullScreen=""
+                      loading="lazy"
+                      title="Location Map"
+                    />
+                    {/* Venue name badge overlay */}
+                    <div style={{
+                      position:'absolute',
+                      top:'10px',
+                      left:'50%',
+                      transform:'translateX(-50%)',
+                      background:'rgba(0,0,0,0.75)',
+                      backdropFilter:'blur(8px)',
+                      color:'white',
+                      fontSize:'12px',
+                      fontWeight:600,
+                      padding:'5px 14px',
+                      borderRadius:'20px',
+                      fontFamily:'Inter,sans-serif',
+                      whiteSpace:'nowrap',
+                      maxWidth:'90%',
+                      overflow:'hidden',
+                      textOverflow:'ellipsis',
+                      pointerEvents:'none',
+                      border:`1px solid ${pc}66`,
+                      boxShadow:'0 2px 12px rgba(0,0,0,0.4)',
+                    }}>
+                      <span style={{color:pc,marginRight:'6px'}}>📍</span>
+                      {event.venue}
+                    </div>
+                  </div>
                   <a href={url} target="_blank" rel="noreferrer" style={{
                     display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
                     padding:'12px',background:'rgba(255,255,255,0.04)',
