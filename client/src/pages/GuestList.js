@@ -250,8 +250,8 @@ const GuestList = () => {
     queryFn: () => rsvpAPI.getStats(eventId).then(r => r.data),
     refetchInterval: 10000,
   });
-  const rsvpConfirmed = rsvpStatsData?.stats?.confirmed || 0;
-  const rsvpTotal     = rsvpStatsData?.stats?.total     || 0;
+  const rsvpConfirmed = rsvpStatsData?.stats?.confirmedHeadcount || rsvpStatsData?.stats?.confirmed || 0;
+  const rsvpTotal     = rsvpStatsData?.stats?.totalHeadcount     || rsvpStatsData?.stats?.total     || 0;
 
   const handleImport = (e) => {
     const file = e.target.files?.[0];

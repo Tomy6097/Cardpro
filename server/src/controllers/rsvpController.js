@@ -1,4 +1,5 @@
 const Guest = require('../models/Guest');
+const { TICKET_CAPACITY } = Guest;
 const Event = require('../models/Event');
 const { logActivity } = require('../utils/activityLogger');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -95,21 +96,33 @@ exports.declineRSVP = asyncHandler(async (req, res) => {
 exports.getRSVPStats = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
 
-  const [total, confirmed, pending, declined] = await Promise.all([
-    Guest.countDocuments({ event: eventId, isDeleted: false }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'confirmed' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'pending' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'declined' }),
-  ]);
+  // Fetch guests with ticketType to calculate headcount
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false }).select('rsvpStatus ticketType').lean();
 
-  const confirmedPct = total > 0 ? Math.round((confirmed / total) * 100) : 0;
-  const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0;
-  const declinedPct = total > 0 ? Math.round((declined / total) * 100) : 0;
+  const total     = allGuests.length;
+  const confirmed = allGuests.filter(g => g.rsvpStatus === 'confirmed');
+  const pending   = allGuests.filter(g => g.rsvpStatus === 'pending');
+  const declined  = allGuests.filter(g => g.rsvpStatus === 'declined');
+
+  // Headcount respects ticket capacity (Double=2, Family=4 etc)
+  const headcount = (arr) => arr.reduce((sum, g) => sum + (TICKET_CAPACITY[g.ticketType] || 1), 0);
+
+  const totalHeadcount     = headcount(allGuests);
+  const confirmedHeadcount = headcount(confirmed);
+  const pendingHeadcount   = headcount(pending);
+  const declinedHeadcount  = headcount(declined);
+
+  const confirmedPct = totalHeadcount > 0 ? Math.round((confirmedHeadcount / totalHeadcount) * 100) : 0;
+  const pendingPct   = totalHeadcount > 0 ? Math.round((pendingHeadcount   / totalHeadcount) * 100) : 0;
+  const declinedPct  = totalHeadcount > 0 ? Math.round((declinedHeadcount  / totalHeadcount) * 100) : 0;
 
   res.json({
     success: true,
     stats: {
-      total, confirmed, pending, declined,
+      // Guest counts (for display)
+      total, confirmed: confirmed.length, pending: pending.length, declined: declined.length,
+      // Headcounts (people, for Live RSVP bar)
+      totalHeadcount, confirmedHeadcount, pendingHeadcount, declinedHeadcount,
       confirmedPct, pendingPct, declinedPct,
     },
   });
