@@ -126,6 +126,25 @@ exports.getRecentRSVPCount = asyncHandler(async (req, res) => {
   res.json({ success: true, newCount });
 });
 
+// Per-event notifications — new RSVPs and messages since last check
+exports.getEventNotifications = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000); // last 48h
+
+  const [newConfirmed, newDeclined, newMessages] = await Promise.all([
+    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'confirmed', rsvpAt: { $gte: since } }),
+    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'declined', rsvpAt: { $gte: since } }),
+    Guest.countDocuments({ event: eventId, isDeleted: false, guestMessage: { $exists: true, $ne: '' }, messageAt: { $gte: since } }),
+  ]);
+
+  res.json({
+    success: true,
+    rsvp: newConfirmed + newDeclined,
+    messages: newMessages,
+    total: newConfirmed + newDeclined + newMessages,
+  });
+});
+
 // Save guest congratulation message
 exports.saveGuestMessage = asyncHandler(async (req, res) => {
   const { verificationCode } = req.params;

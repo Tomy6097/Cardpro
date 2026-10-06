@@ -78,6 +78,7 @@ export const rsvpAPI = {
   decline: (code) => api.post(`/rsvp/decline/${code}`),
   getStats: (eventId) => api.get(`/rsvp/stats/${eventId}`),
   getRecentCount: () => api.get('/rsvp/recent-count'),
+  getEventNotifications: (eventId) => api.get(`/rsvp/notifications/${eventId}`),
 };
 
 // Scanner

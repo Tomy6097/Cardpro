@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { eventsAPI, reportsAPI } from '../api';
+import { eventsAPI, reportsAPI, rsvpAPI } from '../api';
 import Badge from '../components/common/Badge';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -91,6 +91,16 @@ const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
+  // Track dismissed notifications per module
+  const [dismissed, setDismissed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`notif_dismissed_${id}`) || '{}'); } catch { return {}; }
+  });
+
+  const dismissModule = (key) => {
+    const next = { ...dismissed, [key]: Date.now() };
+    setDismissed(next);
+    localStorage.setItem(`notif_dismissed_${id}`, JSON.stringify(next));
+  };
 
   const handleDownloadReport = async () => {
     setDownloading(true);
@@ -121,6 +131,23 @@ const EventDetail = () => {
     queryKey: ['event-stats', id],
     queryFn: () => eventsAPI.getStats(id).then(r => r.data),
   });
+
+  // Fetch per-event notifications
+  const { data: notifData } = useQuery({
+    queryKey: ['event-notifications', id],
+    queryFn: () => rsvpAPI.getEventNotifications(id).then(r => r.data),
+    refetchInterval: 60000,
+  });
+  const notif = notifData || { rsvp: 0, messages: 0 };
+
+  // Determine badge count per module (only if not dismissed recently)
+  const DISMISS_TTL = 5 * 60 * 1000; // 5 min — badge stays gone after clicking module
+  const moduleBadge = (key) => {
+    const lastDismiss = dismissed[key] || 0;
+    if (Date.now() - lastDismiss < DISMISS_TTL) return 0;
+    if (key === 'rsvp') return notif.rsvp;
+    return 0;
+  };
 
   if (isLoading) return (
     <div className="page-container">
@@ -272,51 +299,70 @@ const EventDetail = () => {
         Event Modules
       </h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-        {modules.map(mod => (
-          <div
-            key={mod.key}
-            onClick={() => navigate(`/events/${id}/${mod.key}`)}
-            style={{
-              background: 'var(--white)',
-              borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-sm)',
-              border: '1px solid var(--border-light)',
-              padding: '18px 20px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-              e.currentTarget.style.borderColor = mod.color + '40';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-              e.currentTarget.style.borderColor = 'var(--border-light)';
-            }}
-          >
-            <div style={{
-              width: '46px', height: '46px', borderRadius: 'var(--radius)',
-              background: mod.bg, color: mod.color, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {mod.icon}
+        {modules.map(mod => {
+          const badge = moduleBadge(mod.key);
+          return (
+            <div
+              key={mod.key}
+              onClick={() => { dismissModule(mod.key); navigate(`/events/${id}/${mod.key}`); }}
+              style={{
+                background: 'var(--white)',
+                borderRadius: 'var(--radius)',
+                boxShadow: 'var(--shadow-sm)',
+                border: badge > 0 ? `2px solid ${mod.color}` : '1px solid var(--border-light)',
+                padding: '18px 20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                position: 'relative',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+              }}
+            >
+              <div style={{
+                width: '46px', height: '46px', borderRadius: 'var(--radius)',
+                background: mod.bg, color: mod.color, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
+              }}>
+                {mod.icon}
+                {/* Notification badge on icon */}
+                {badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '-6px', right: '-6px',
+                    background: '#EF4444', color: 'white',
+                    fontSize: '10px', fontWeight: 700,
+                    minWidth: '18px', height: '18px', borderRadius: '10px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', fontFamily: 'Inter', lineHeight: 1,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                  }}>
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 3px' }}>
+                  {mod.title}
+                </h4>
+                <p style={{ fontSize: '12px', color: badge > 0 ? mod.color : 'var(--text-muted)', margin: 0, fontWeight: badge > 0 ? 600 : 400 }}>
+                  {badge > 0 ? `${badge} new update${badge !== 1 ? 's' : ''}` : mod.desc}
+                </p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h4 style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 3px' }}>
-                {mod.title}
-              </h4>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{mod.desc}</p>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink: 0 }}>
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
