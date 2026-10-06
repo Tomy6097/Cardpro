@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsAPI, rsvpAPI } from '../api';
@@ -43,6 +43,11 @@ const Events = () => {
     retry: false,
   });
   const eventNotifs = allNotifData?.events || {};
+
+  // Clear all badges when Events page is opened
+  useEffect(() => {
+    qc.setQueryData(['all-notifications'], (old) => old ? { ...old, grandTotal: 0, events: {} } : old);
+  }, []); // eslint-disable-line
 
   const createMutation = useMutation({
     mutationFn: (data) => editId ? eventsAPI.update(editId, data) : eventsAPI.create(data),

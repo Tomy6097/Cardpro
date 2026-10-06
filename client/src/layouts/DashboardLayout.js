@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { settingsAPI, rsvpAPI } from '../api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 // NavItem with optional badge
@@ -74,6 +74,8 @@ const Icon = ({ name, size = 18 }) => {
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const qc = useQueryClient();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -83,10 +85,20 @@ const DashboardLayout = () => {
   const { data: notifData } = useQuery({
     queryKey: ['all-notifications'],
     queryFn: () => rsvpAPI.getAllNotifications().then(r => r.data),
-    refetchInterval: 60000, // every minute
+    refetchInterval: 60000,
     retry: false,
   });
-  const rsvpBadge = notifData?.grandTotal || 0;
+  const grandTotal = notifData?.grandTotal || 0;
+
+  // Clear badge when user is on /events page
+  useEffect(() => {
+    if (location.pathname === '/events' || location.pathname.startsWith('/events/')) {
+      // Zero out the badge by updating cache
+      qc.setQueryData(['all-notifications'], (old) => old ? { ...old, grandTotal: 0, events: {} } : old);
+    }
+  }, [location.pathname, qc]);
+
+  const rsvpBadge = grandTotal;
 
   useEffect(() => {
     // Check cache first
