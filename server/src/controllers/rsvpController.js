@@ -134,7 +134,7 @@ exports.getEventNotifications = asyncHandler(async (req, res) => {
   const [newConfirmed, newDeclined, newMessages] = await Promise.all([
     Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'confirmed', rsvpAt: { $gte: since } }),
     Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'declined', rsvpAt: { $gte: since } }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, guestMessage: { $exists: true, $ne: '' }, messageAt: { $gte: since } }),
+    Guest.countDocuments({ event: eventId, isDeleted: false, guestMessage: { $nin: [null, '', undefined] }, messageAt: { $gte: since } }),
   ]);
 
   res.json({
@@ -159,7 +159,7 @@ exports.getAllEventNotifications = asyncHandler(async (req, res) => {
   for (const ev of events) {
     const [rsvp, msgs] = await Promise.all([
       Guest.countDocuments({ event: ev._id, isDeleted: false, rsvpStatus: { $in: ['confirmed', 'declined'] }, rsvpAt: { $gte: since } }),
-      Guest.countDocuments({ event: ev._id, isDeleted: false, guestMessage: { $exists: true, $ne: '' }, messageAt: { $gte: since } }),
+      Guest.countDocuments({ event: ev._id, isDeleted: false, guestMessage: { $nin: [null, '', undefined] }, messageAt: { $gte: since } }),
     ]);
     if (rsvp > 0 || msgs > 0) {
       results[ev._id] = { rsvp, messages: msgs, total: rsvp + msgs, name: ev.name };

@@ -24,10 +24,10 @@ const RSVPDashboard = () => {
     queryFn: () => guestsAPI.getAll(eventId, { rsvpStatus: 'declined', limit: 100 }).then(r => r.data),
   });
 
-  // Fetch guests with messages
+  // Fetch guests with messages — get all and filter client-side
   const { data: messagesData } = useQuery({
     queryKey: ['guest-messages', eventId],
-    queryFn: () => guestsAPI.getAll(eventId, { limit: 200 }).then(r => r.data),
+    queryFn: () => guestsAPI.getAll(eventId, { limit: 500 }).then(r => r.data),
     refetchInterval: 30000,
   });
   const guestMessages = (messagesData?.guests || []).filter(g => g.guestMessage && g.guestMessage.trim());
