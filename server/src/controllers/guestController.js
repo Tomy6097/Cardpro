@@ -380,6 +380,9 @@ exports.getGuests = asyncHandler(async (req, res) => {
   if (messageStatus) filter.messageStatus = messageStatus;
   if (scanStatus) filter.scanStatus = scanStatus;
   if (ticketType) filter.ticketType = ticketType;
+  if (req.query.hasMessage === 'true') {
+    filter.guestMessage = { $exists: true, $ne: '', $ne: null };
+  }
 
   const skip = (Number(page) - 1) * Number(limit);
   const [guests, total] = await Promise.all([

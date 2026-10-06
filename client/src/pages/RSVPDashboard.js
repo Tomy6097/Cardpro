@@ -24,6 +24,14 @@ const RSVPDashboard = () => {
     queryFn: () => guestsAPI.getAll(eventId, { rsvpStatus: 'declined', limit: 100 }).then(r => r.data),
   });
 
+  // Fetch guests with messages
+  const { data: messagesData } = useQuery({
+    queryKey: ['guest-messages', eventId],
+    queryFn: () => guestsAPI.getAll(eventId, { limit: 200 }).then(r => r.data),
+    refetchInterval: 30000,
+  });
+  const guestMessages = (messagesData?.guests || []).filter(g => g.guestMessage && g.guestMessage.trim());
+
   const stats = statsData?.stats || {};
   const ev = eventData?.event;
   const declinedGuests = (declinedData?.guests || []).filter(g => g.declineReason);
@@ -156,6 +164,62 @@ const RSVPDashboard = () => {
                         borderRadius: '8px', border: '1px solid #FECACA',
                       }}>
                         "{g.declineReason}"
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Guest Messages to Couple */}
+          {guestMessages.length > 0 && (
+            <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', padding: '24px', marginTop: '20px' }}>
+              <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 600, color: 'var(--primary-dark)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" strokeWidth="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                Messages from Guests
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                {guestMessages.length} guest{guestMessages.length !== 1 ? 's' : ''} left a message
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {guestMessages.map(g => (
+                  <div key={g._id} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '14px',
+                    padding: '16px', background: '#FFFBEB',
+                    borderRadius: 'var(--radius)', border: '1px solid #FDE68A',
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: '38px', height: '38px', borderRadius: '50%',
+                      background: 'var(--secondary)', color: '#3a1f00',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '15px', fontWeight: 700, fontFamily: 'Poppins', flexShrink: 0,
+                    }}>
+                      {g.guestName[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                        <p style={{ fontWeight: 600, fontSize: '14px', color: 'var(--primary-dark)', margin: 0, fontFamily: 'Poppins' }}>
+                          {g.guestName}
+                        </p>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'white', padding: '2px 8px', borderRadius: '20px', border: '1px solid #FDE68A' }}>
+                          {g.ticketType}
+                        </span>
+                        {g.messageAt && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {new Date(g.messageAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{
+                        fontSize: '14px', color: '#78350F', margin: 0,
+                        fontStyle: 'italic', lineHeight: 1.6,
+                        background: 'white', padding: '10px 14px',
+                        borderRadius: '8px', border: '1px solid #FDE68A',
+                      }}>
+                        "{g.guestMessage}"
                       </p>
                     </div>
                   </div>

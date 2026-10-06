@@ -73,6 +73,7 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
   const waSent     = allGuests.filter(g => g.messageChannel === 'whatsapp').length;
   const notSent    = allGuests.filter(g => g.messageStatus === 'not_sent').length;
   const declined_with_reason = allGuests.filter(g => g.rsvpStatus === 'declined' && g.declineReason);
+  const guests_with_messages = allGuests.filter(g => g.guestMessage && g.guestMessage.trim());
 
   // Ticket breakdown
   const ticketBreakdown = {};
@@ -308,6 +309,54 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
 
       rule(page, y - cardH - 2, colW, C.lightgray);
       y -= cardH + 10;
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // GUEST MESSAGES PAGE
+  // ─────────────────────────────────────────
+  if (guests_with_messages.length > 0) {
+    page = pdfDoc.addPage([W, H]);
+    rect(page, 0, H - 50, W, 50, C.dark);
+    rect(page, 0, H - 54, W, 4, C.gold);
+    txt(page, 'UJUMBE WA WAGENI KWA HARUSI', margin, H - 30, { font: fontBold, size: 14, color: C.gold });
+    txt(page, event.name, margin, H - 44, { font: fontRegular, size: 9, color: rgb(0.7,0.65,0.55) });
+
+    y = H - 72;
+
+    for (const g of guests_with_messages) {
+      if (y < 80) {
+        page = pdfDoc.addPage([W, H]);
+        rect(page, 0, H - 30, W, 30, C.dark);
+        txt(page, 'UJUMBE WA WAGENI (inaendelea)', margin, H - 18, { font: fontBold, size: 10, color: C.gold });
+        y = H - 50;
+      }
+
+      const msgCardH = 58;
+      rect(page, margin, y - msgCardH, colW, msgCardH, C.cream);
+      page.drawRectangle({ x: margin, y: y - msgCardH, width: 4, height: msgCardH, color: C.gold });
+
+      txt(page, g.guestName, margin + 12, y - 12, { font: fontBold, size: 10, color: C.primary });
+      txt(page, `${g.ticketType} · ${g.phone}`, margin + 12, y - 24, { font: fontRegular, size: 8, color: C.muted });
+
+      if (g.messageAt) {
+        txt(page, `Tarehe: ${fmtDateTime(g.messageAt)}`, margin + 12, y - 34, { font: fontRegular, size: 8, color: C.muted });
+      }
+
+      // Message text — wrap at 85 chars
+      const msgText = g.guestMessage || '';
+      const msgLines = [];
+      let cur = '';
+      for (const word of msgText.split(' ')) {
+        if ((cur + ' ' + word).length > 85) { msgLines.push(cur.trim()); cur = word; }
+        else cur += ' ' + word;
+      }
+      if (cur.trim()) msgLines.push(cur.trim());
+
+      txt(page, `"${msgLines[0] || ''}"`, margin + 12, y - 50, { font: fontRegular, size: 8, color: C.dark });
+
+      rule(page, y - msgCardH - 2, colW, C.lightgray);
+      y -= msgCardH + 10;
     }
   }
 

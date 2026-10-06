@@ -50,6 +50,7 @@ export const guestsAPI = {
   getQRProgress: (eventId) => api.get(`/guests/event/${eventId}/qr-progress`),
   downloadCSV: (eventId) => api.get(`/guests/event/${eventId}/download-csv`, { responseType: 'blob' }),
   resetScan: (id) => api.post(`/guests/${id}/reset-scan`),
+  getMessages: (eventId) => api.get(`/guests/event/${eventId}`, { params: { hasMessage: true, limit: 200 } }),
 };
 
 // Cards
