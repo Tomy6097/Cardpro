@@ -119,7 +119,7 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
   y -= 14;
 
   const infoRows = [
-    ['Jina la Tukio',   event.name],
+    ['Aina ya Tukio',   event.name],
     ['Mteja',           event.clientName],
     ['Tarehe',          fmtDate(event.date) + (event.time ? `  ·  Saa: ${event.time}` : '')],
     ['Mahali',          event.venue],
@@ -148,14 +148,14 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
 
   // Stat boxes — 4 per row
   const boxes = [
-    { label: 'Jumla ya Wageni', value: total,     color: C.primary },
-    { label: 'Wamethibitisha',  value: confirmed,  color: C.green },
-    { label: 'Hawajathibitisha',value: pending,    color: C.orange },
-    { label: 'Wamekataa',       value: declined,   color: C.red },
-    { label: 'Wameingia',       value: scanned,    color: C.green },
-    { label: 'Hawajaingia',     value: total - scanned, color: C.muted },
-    { label: 'SMS Zilitumwa',   value: smsSent,    color: C.primary },
-    { label: 'WhatsApp Zilitumwa', value: waSent,  color: rgb(0.145, 0.827, 0.400) },
+    { label: 'Jumla ya Wageni',    value: total,          color: C.primary },
+    { label: 'Waliothibitisha',    value: confirmed,      color: C.green },
+    { label: 'Hawajathibitisha',   value: pending,        color: C.orange },
+    { label: 'Waliotoa Udhuru',    value: declined,       color: C.red },
+    { label: 'Waliokuhudhuria',    value: scanned,        color: C.green },
+    { label: 'Hawakuhudhuria',     value: total - scanned,color: C.muted },
+    { label: 'SMS Zilitumwa',      value: smsSent,        color: C.primary },
+    { label: 'WhatsApp Zilitumwa', value: waSent,         color: rgb(0.145, 0.827, 0.400) },
   ];
 
   y -= 10;
@@ -248,8 +248,8 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
     const rsvpColor = g.rsvpStatus === 'confirmed' ? C.green : g.rsvpStatus === 'declined' ? C.red : C.orange;
     const scanColor = g.scanStatus === 'scanned' ? C.green : C.muted;
 
-    const rsvpLabel = g.rsvpStatus === 'confirmed' ? 'Imethibitishwa' : g.rsvpStatus === 'declined' ? 'Imekataliwa' : 'Inasubiri';
-    const scanLabel = g.scanStatus === 'scanned' ? 'Ameingia' : 'Hajakuja';
+    const rsvpLabel = g.rsvpStatus === 'confirmed' ? 'Alithibitisha' : g.rsvpStatus === 'declined' ? 'Alitoa Udhuru' : 'Hajathibitisha';
+    const scanLabel = g.scanStatus === 'scanned' ? 'Alihudhuria' : 'Hakuhudhuria';
 
     cx = margin;
     txt(page, g.guestName,        cx + 4, y - 8, { font: fontBold,    size: 8, color: C.dark   }); cx += cols.name;
@@ -372,16 +372,16 @@ exports.generateEventReport = asyncHandler(async (req, res) => {
   y = H - 80;
 
   const summaryRows = [
-    ['Jumla ya Wageni Walioorodheshwa', `${total}`],
-    ['Wamethibitisha Mahudhurio', `${confirmed} (${pct(confirmed, total)}%)`],
-    ['Bado Hawajajibu (Pending)', `${pending} (${pct(pending, total)}%)`],
-    ['Wamekataa', `${declined} (${pct(declined, total)}%)`],
-    ['Wamekataa na Kutoa Sababu', `${declined_with_reason.length}`],
-    ['Wameingia Siku ya Tukio', `${scanned} (${pct(scanned, total)}%)`],
-    ['Hawakuingia', `${total - scanned} (${pct(total - scanned, total)}%)`],
-    ['Mialiko Iliyotumwa (SMS)', `${smsSent}`],
-    ['Mialiko Iliyotumwa (WhatsApp)', `${waSent}`],
-    ['Hawakupata Mwaliko', `${notSent}`],
+    ['Jumla ya Wageni Walioorodheshwa',  `${total}`],
+    ['Waliothibitisha Mahudhurio',        `${confirmed} (${pct(confirmed, total)}%)`],
+    ['Hawajathibitisha (Pending)',        `${pending} (${pct(pending, total)}%)`],
+    ['Waliotoa Udhuru',                  `${declined} (${pct(declined, total)}%)`],
+    ['Waliotoa Udhuru na Kutoa Sababu',  `${declined_with_reason.length}`],
+    ['Waliokuhudhuria Siku ya Tukio',    `${scanned} (${pct(scanned, total)}%)`],
+    ['Hawakuhudhuria',                   `${total - scanned} (${pct(total - scanned, total)}%)`],
+    ['Mialiko Iliyotumwa (SMS)',          `${smsSent}`],
+    ['Mialiko Iliyotumwa (WhatsApp)',     `${waSent}`],
+    ['Hawakupata Mwaliko',               `${notSent}`],
   ];
 
   for (const [label, value] of summaryRows) {

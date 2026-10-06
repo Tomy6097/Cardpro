@@ -29,8 +29,10 @@ const labelMap = {
   not_sent: 'Not Sent',
   sms_sent: 'SMS Sent',
   whatsapp_sent: 'WhatsApp Sent',
-  not_scanned: 'Not Scanned',
+  not_scanned: 'Hakuhudhuria',
   duplicate_scan: 'Duplicate Scan',
+  pending: 'Hajathibitisha',
+  scanned: 'Alihudhuria',
 };
 
 const Badge = ({ status, label, style = {} }) => {
