@@ -261,7 +261,8 @@ exports.importGuests = asyncHandler(async (req, res) => {
 
         const ticketType = normalizeTicketType(
           row['ticket'] || row['ticket_type'] || row['tickettype'] ||
-          row['type'] || row['aina'] || ''
+          row['type'] || row['aina'] || row['tiketi'] ||
+          Object.values(row)[2] || '' // fallback: 3rd column
         );
         const email = (row['email'] || row['barua_pepe'] || '').toString().trim();
         const tableNumber = (row['table'] || row['table_number'] || row['meza'] || '').toString().trim();
