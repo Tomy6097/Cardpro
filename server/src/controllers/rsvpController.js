@@ -145,6 +145,31 @@ exports.getEventNotifications = asyncHandler(async (req, res) => {
   });
 });
 
+// All events notifications — returns { eventId: { rsvp, messages, total } }
+exports.getAllEventNotifications = asyncHandler(async (req, res) => {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const Event = require('../models/Event');
+
+  // Get all active events
+  const events = await Event.find({ status: 'active' }).select('_id name').lean();
+
+  const results = {};
+  let grandTotal = 0;
+
+  for (const ev of events) {
+    const [rsvp, msgs] = await Promise.all([
+      Guest.countDocuments({ event: ev._id, isDeleted: false, rsvpStatus: { $in: ['confirmed', 'declined'] }, rsvpAt: { $gte: since } }),
+      Guest.countDocuments({ event: ev._id, isDeleted: false, guestMessage: { $exists: true, $ne: '' }, messageAt: { $gte: since } }),
+    ]);
+    if (rsvp > 0 || msgs > 0) {
+      results[ev._id] = { rsvp, messages: msgs, total: rsvp + msgs, name: ev.name };
+      grandTotal += rsvp + msgs;
+    }
+  }
+
+  res.json({ success: true, events: results, grandTotal });
+});
+
 // Save guest congratulation message
 exports.saveGuestMessage = asyncHandler(async (req, res) => {
   const { verificationCode } = req.params;

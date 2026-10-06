@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { eventsAPI } from '../api';
+import { eventsAPI, rsvpAPI } from '../api';
 import toast from 'react-hot-toast';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
@@ -34,6 +34,15 @@ const Events = () => {
     queryKey: ['events', search, statusFilter],
     queryFn: () => eventsAPI.getAll({ search, status: statusFilter, limit: 50 }).then(r => r.data),
   });
+
+  // Per-event notification badges
+  const { data: allNotifData } = useQuery({
+    queryKey: ['all-notifications'],
+    queryFn: () => rsvpAPI.getAllNotifications().then(r => r.data),
+    refetchInterval: 60000,
+    retry: false,
+  });
+  const eventNotifs = allNotifData?.events || {};
 
   const createMutation = useMutation({
     mutationFn: (data) => editId ? eventsAPI.update(editId, data) : eventsAPI.create(data),
@@ -138,16 +147,33 @@ const Events = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-          {events.map(ev => (
+          {events.map(ev => {
+            const evNotif = eventNotifs[ev._id];
+            const notifCount = evNotif?.total || 0;
+            return (
             <div key={ev._id} style={{
               background: 'var(--white)', borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)',
+              boxShadow: 'var(--shadow-md)', border: notifCount > 0 ? '2px solid var(--secondary)' : '1px solid var(--border-light)',
               overflow: 'hidden', transition: 'box-shadow var(--transition)',
-              cursor: 'pointer',
+              cursor: 'pointer', position: 'relative',
             }}
             onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-lg)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
             >
+              {/* Notification badge */}
+              {notifCount > 0 && (
+                <div style={{
+                  position: 'absolute', top: '10px', right: '10px', zIndex: 10,
+                  background: '#EF4444', color: 'white',
+                  fontSize: '11px', fontWeight: 700, fontFamily: 'Inter',
+                  minWidth: '22px', height: '22px', borderRadius: '12px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 6px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                }}>
+                  {notifCount > 99 ? '99+' : notifCount}
+                </div>
+              )}
+
               {/* Header */}
               <div style={{ background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))', padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -225,7 +251,7 @@ const Events = () => {
                 </div>
               </div>
             </div>
-          ))}
+          ); })}
         </div>
       )}
 

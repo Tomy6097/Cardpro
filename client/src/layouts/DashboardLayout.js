@@ -79,14 +79,14 @@ const DashboardLayout = () => {
   const [companyLogo, setCompanyLogo] = useState(null);
   const [companyName, setCompanyName] = useState('Cardpro');
 
-  // Notification: count new RSVPs (confirmed + declined) in last 24h across all events
+  // Notification: total across all events (last 48h)
   const { data: notifData } = useQuery({
-    queryKey: ['rsvp-notifications'],
-    queryFn: () => rsvpAPI.getRecentCount().then(r => r.data),
+    queryKey: ['all-notifications'],
+    queryFn: () => rsvpAPI.getAllNotifications().then(r => r.data),
     refetchInterval: 60000, // every minute
     retry: false,
   });
-  const rsvpBadge = notifData?.newCount || 0;
+  const rsvpBadge = notifData?.grandTotal || 0;
 
   useEffect(() => {
     // Check cache first

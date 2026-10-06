@@ -79,6 +79,7 @@ export const rsvpAPI = {
   getStats: (eventId) => api.get(`/rsvp/stats/${eventId}`),
   getRecentCount: () => api.get('/rsvp/recent-count'),
   getEventNotifications: (eventId) => api.get(`/rsvp/notifications/${eventId}`),
+  getAllNotifications: () => api.get('/rsvp/notifications'),
 };
 
 // Scanner
