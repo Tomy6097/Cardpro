@@ -10,6 +10,106 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const SW_MONTHS = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
 const SW_DAYS   = ['Jumapili','Jumatatu','Jumanne','Jumatano','Alhamisi','Ijumaa','Jumamosi'];
 
+// ✅ Parse Twilio/WhatsApp errors into user-friendly messages
+const parseWhatsAppError = (error) => {
+  const errorCode = error.code || error.response?.data?.code || error.response?.status;
+  const errorMsg = error.message || error.response?.data?.message || 'Unknown error';
+
+  // Common Twilio WhatsApp error codes
+  const errorMap = {
+    // Authentication & Configuration
+    20003: {
+      message: '🔐 Twilio credentials invalid. Check your Account SID and Auth Token.',
+      suggestion: 'Go to Settings → Messaging and verify your Twilio credentials.',
+      statusCode: 401
+    },
+    20404: {
+      message: '❌ WhatsApp template not found or not approved yet.',
+      suggestion: 'Wait for template approval (1-3 days) or use Custom Text mode instead.',
+      statusCode: 404
+    },
+    
+    // WhatsApp-specific
+    63016: {
+      message: '📱 Recipient has not joined WhatsApp Sandbox or WhatsApp Business API not enabled.',
+      suggestion: 'Either: 1) Wait for WhatsApp Business approval, or 2) Ask guest to send "join <code>" to sandbox number.',
+      statusCode: 400
+    },
+    63032: {
+      message: '⚠️ Template not approved or variables mismatch.',
+      suggestion: 'Check template approval status in Twilio Console. Template may still be under review.',
+      statusCode: 400
+    },
+    63033: {
+      message: '⏰ Message outside customer service window. Template required.',
+      suggestion: 'Use Template Mode or wait 24 hours after last customer message.',
+      statusCode: 400
+    },
+    
+    // Phone number issues
+    21211: {
+      message: '📞 Invalid phone number format.',
+      suggestion: `Check guest phone number: ${error.response?.data?.more_info || 'Must be in format +255XXXXXXXXX'}`,
+      statusCode: 400
+    },
+    21608: {
+      message: '❌ This phone number is not enabled for WhatsApp or does not have WhatsApp.',
+      suggestion: 'Use SMS instead, or verify the guest has WhatsApp installed.',
+      statusCode: 400
+    },
+    21610: {
+      message: '🚫 Message blocked by WhatsApp. Recipient may have blocked your number.',
+      suggestion: 'Guest may have blocked sender. Use SMS or contact guest directly.',
+      statusCode: 400
+    },
+    
+    // Balance & Limits
+    20429: {
+      message: '💰 Insufficient Twilio balance.',
+      suggestion: 'Top up your Twilio account at console.twilio.com/billing',
+      statusCode: 402
+    },
+    20003: {
+      message: '⚠️ Account suspended or balance insufficient.',
+      suggestion: 'Check Twilio account status and balance.',
+      statusCode: 403
+    },
+    
+    // Rate limiting
+    429: {
+      message: '⏱️ Too many messages sent. Rate limit exceeded.',
+      suggestion: 'Wait a few minutes and try again. System sends 1 message per 1.2 seconds.',
+      statusCode: 429
+    },
+    
+    // Network/Timeout
+    'ETIMEDOUT': {
+      message: '⏳ Request timeout. Network issue or Twilio service slow.',
+      suggestion: 'Check internet connection and try again in a few minutes.',
+      statusCode: 408
+    },
+    'ENOTFOUND': {
+      message: '🌐 Cannot connect to Twilio servers.',
+      suggestion: 'Check internet connection. Twilio may be down (rare).',
+      statusCode: 503
+    },
+  };
+
+  // Check if we have a known error
+  const knownError = errorMap[errorCode] || errorMap[error.code];
+  
+  if (knownError) {
+    return knownError;
+  }
+
+  // Default error for unknown issues
+  return {
+    message: `❌ WhatsApp send failed: ${errorMsg}`,
+    suggestion: `Error code: ${errorCode || 'UNKNOWN'}. Check Twilio Console logs for details: console.twilio.com/monitor/logs`,
+    statusCode: 500
+  };
+};
+
 const formatDate = (date, lang = 'sw') => {
   const d = new Date(date);
   if (lang === 'en') {
@@ -304,74 +404,107 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
 
   const client = twilio(accountSid, authToken);
 
-  // MODE 1: Use Twilio Content Template (with image + button)
-  if (shouldUseTemplate) {
-    const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
-    
-    // ✅ WhatsApp Template Variables (Twilio Format)
-    // HEADER: Image variable handled separately
-    // BODY:   {{1}} to {{6}}
-    // BUTTON: {{7}}
-    const contentVariables = {
-      '1': guest.guestName,
-      '2': guest.event.clientName,
-      '3': formatDate(guest.event.date, 'sw') + (guest.event.time ? ` · ${guest.event.time}` : ''),
-      '4': guest.event.venue,
-      '5': guest.event.dressCode || 'Smart Casual',
-      '6': guest.verificationCode,
-      '7': confirmUrl,
-    };
+  try {
+    // MODE 1: Use Twilio Content Template (with image + button)
+    if (shouldUseTemplate) {
+      const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
+      
+      // ✅ WhatsApp Template Variables (Twilio Format)
+      // HEADER: Image variable handled separately
+      // BODY:   {{1}} to {{6}}
+      // BUTTON: {{7}}
+      const contentVariables = {
+        '1': guest.guestName,
+        '2': guest.event.clientName,
+        '3': formatDate(guest.event.date, 'sw') + (guest.event.time ? ` · ${guest.event.time}` : ''),
+        '4': guest.event.venue,
+        '5': guest.event.dressCode || 'Smart Casual',
+        '6': guest.verificationCode,
+        '7': confirmUrl,
+      };
 
-    const cvString = JSON.stringify(contentVariables);
-    console.log('=== sendWhatsApp DEBUG ===');
-    console.log('Guest:', guest.guestName, '| Phone:', guest.phone);
-    console.log('Client Name:', guest.event.clientName);
-    console.log('Card Image:', guest.cardUrl || guest.event.cardTemplate?.url || guest.event.coverImage?.url);
-    console.log('From:', from, '| To:', toNumber);
-    console.log('ContentSid:', contentSid);
-    console.log('ContentVariables:', cvString);
-    console.log('=========================');
+      const cvString = JSON.stringify(contentVariables);
+      console.log('=== sendWhatsApp DEBUG ===');
+      console.log('Guest:', guest.guestName, '| Phone:', guest.phone);
+      console.log('Client Name:', guest.event.clientName);
+      console.log('Card Image:', guest.cardUrl || guest.event.cardTemplate?.url || guest.event.coverImage?.url);
+      console.log('From:', from, '| To:', toNumber);
+      console.log('ContentSid:', contentSid);
+      console.log('ContentVariables:', cvString);
+      console.log('=========================');
 
-    // Use Twilio REST API directly via axios
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    const params = new URLSearchParams();
-    params.append('From', from);
-    params.append('To', toNumber);
-    params.append('ContentSid', contentSid);
-    params.append('ContentVariables', cvString);
+      // Use Twilio REST API directly via axios
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+      const params = new URLSearchParams();
+      params.append('From', from);
+      params.append('To', toNumber);
+      params.append('ContentSid', contentSid);
+      params.append('ContentVariables', cvString);
 
-    const response = await axios.post(twilioUrl, params, {
-      auth: { username: accountSid, password: authToken },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 30000,
+      const response = await axios.post(twilioUrl, params, {
+        auth: { username: accountSid, password: authToken },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 30000,
+      });
+
+      console.log('Twilio SID:', response.data?.sid, '| Status:', response.data?.status);
+      console.log('Body sent:', response.data?.body?.substring(0, 100));
+    } else {
+      // MODE 2: Use Plain Text Message (no template, no approval needed)
+      const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
+      const message  = interpolateTemplate(template, guest, guest.event);
+      await client.messages.create({ from, to: toNumber, body: message });
+    }
+
+    // ✅ SUCCESS: Update guest record
+    guest.messageStatus = 'whatsapp_sent';
+    guest.messageChannel = 'whatsapp';
+    guest.messageSentAt = new Date();
+    await guest.save({ validateBeforeSave: false });
+
+    await logActivity({
+      event: guest.event._id,
+      action: 'send_whatsapp',
+      description: `WhatsApp sent to guest "${guest.guestName}" ${shouldUseTemplate ? '(template)' : '(plain text)'}`,
+      req,
     });
 
-    console.log('Twilio SID:', response.data?.sid, '| Status:', response.data?.status);
-    console.log('Body sent:', response.data?.body?.substring(0, 100));
-  } else {
-    // MODE 2: Use Plain Text Message (no template, no approval needed)
-    const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
-    const message  = interpolateTemplate(template, guest, guest.event);
-    await client.messages.create({ from, to: toNumber, body: message });
+    res.json({ 
+      success: true, 
+      message: 'WhatsApp message sent successfully.',
+      mode: shouldUseTemplate ? 'template' : 'plain_text'
+    });
+
+  } catch (error) {
+    // ✅ IMPROVED ERROR HANDLING: Parse Twilio errors and return user-friendly messages
+    console.error('=== WhatsApp Send Error ===');
+    console.error('Error:', error.message);
+    console.error('Code:', error.code);
+    console.error('Status:', error.response?.status);
+    console.error('Data:', error.response?.data);
+    console.error('==========================');
+
+    // Update guest status to failed
+    guest.messageStatus = 'failed';
+    await guest.save({ validateBeforeSave: false });
+
+    await logActivity({
+      event: guest.event._id,
+      action: 'send_whatsapp_failed',
+      description: `WhatsApp FAILED for "${guest.guestName}": ${error.message}`,
+      metadata: { errorCode: error.code, errorMessage: error.message },
+      req,
+    });
+
+    // Parse and return user-friendly error messages
+    const friendlyError = parseWhatsAppError(error);
+    return res.status(friendlyError.statusCode).json({ 
+      success: false, 
+      message: friendlyError.message,
+      errorCode: error.code || 'UNKNOWN',
+      suggestion: friendlyError.suggestion
+    });
   }
-
-  guest.messageStatus = 'whatsapp_sent';
-  guest.messageChannel = 'whatsapp';
-  guest.messageSentAt = new Date();
-  await guest.save({ validateBeforeSave: false });
-
-  await logActivity({
-    event: guest.event._id,
-    action: 'send_whatsapp',
-    description: `WhatsApp sent to guest "${guest.guestName}" ${shouldUseTemplate ? '(template)' : '(plain text)'}`,
-    req,
-  });
-
-  res.json({ 
-    success: true, 
-    message: 'WhatsApp message sent successfully.',
-    mode: shouldUseTemplate ? 'template' : 'plain_text'
-  });
 });
 
 exports.sendBulkSMS = asyncHandler(async (req, res) => {

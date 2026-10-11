@@ -74,8 +74,43 @@ const Invitations = () => {
 
   const bulkWAMutation = useMutation({
     mutationFn: (d) => invitationsAPI.sendBulkWhatsApp(d),
-    onSuccess: (r) => { toast.success(`WhatsApp: ${r.data.sent} sent, ${r.data.failed} failed.`); refetchStats(); },
-    onError: (err) => toast.error(err.message),
+    onSuccess: (r) => { 
+      const data = r.data;
+      const hasErrors = data.failed > 0;
+      
+      if (hasErrors && data.errors && data.errors.length > 0) {
+        // Show summary with first few errors
+        const firstError = data.errors[0];
+        toast.error(
+          <div>
+            <div style={{ fontWeight: 600 }}>WhatsApp: {data.sent} sent, {data.failed} failed</div>
+            <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>
+              First error: {firstError.error}
+            </div>
+            <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
+              Check Activity Log for full details
+            </div>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success(`WhatsApp: ${data.sent} sent successfully!`);
+      }
+      
+      refetchStats(); 
+    },
+    onError: (err) => {
+      const errorMsg = err.response?.data?.message || err.message || 'Bulk WhatsApp send failed';
+      const suggestion = err.response?.data?.suggestion;
+      
+      toast.error(
+        <div>
+          <div style={{ fontWeight: 600 }}>{errorMsg}</div>
+          {suggestion && <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>{suggestion}</div>}
+        </div>,
+        { duration: 8000 }
+      );
+    },
   });
 
   const singleSMSMutation = useMutation({
@@ -86,8 +121,25 @@ const Invitations = () => {
 
   const singleWAMutation = useMutation({
     mutationFn: (d) => invitationsAPI.sendWhatsApp(d),
-    onSuccess: () => { refetchStats(); },
-    onError: (err) => { /* handled per-guest */ },
+    onSuccess: (response) => { 
+      refetchStats(); 
+      toast.success(response.data.message || 'WhatsApp sent!');
+    },
+    onError: (err) => { 
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to send WhatsApp';
+      const suggestion = err.response?.data?.suggestion;
+      const errorCode = err.response?.data?.errorCode;
+      
+      // Show detailed error with suggestion
+      toast.error(
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>{errorMsg}</div>
+          {suggestion && <div style={{ fontSize: '12px', opacity: 0.9 }}>{suggestion}</div>}
+          {errorCode && <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '4px' }}>Code: {errorCode}</div>}
+        </div>,
+        { duration: 8000 }
+      );
+    },
   });
 
   const handleSendBulk = () => {
