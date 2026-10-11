@@ -166,6 +166,20 @@ const Invitations = () => {
   });
 
   const handleSendBulk = () => {
+    // ✅ VALIDATION: Check if message template is empty (for custom text modes)
+    if (channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) {
+      if (!template || template.trim() === '') {
+        toast.error(
+          <div>
+            <div style={{ fontWeight: 600 }}>Message template is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your message before sending.</div>
+          </div>,
+          { duration: 5000 }
+        );
+        return; // Stop execution
+      }
+    }
+    
     const filter = bulkFilter === 'not_sent' ? { notSent: true } : bulkFilter === 'pending_rsvp' ? { rsvpStatus: 'pending' } : {};
     
     // ✅ Calculate how many guests will receive message
@@ -173,12 +187,19 @@ const Invitations = () => {
     if (bulkFilter === 'not_sent') recipientCount = stats.notSent || 0;
     if (bulkFilter === 'pending_rsvp') recipientCount = stats.total - (stats.confirmed || 0) - (stats.declined || 0);
     
+    // ✅ Validation: Check if there are recipients
+    if (recipientCount === 0) {
+      toast.error('No guests match the selected filter. Please adjust your filter or add guests first.');
+      return;
+    }
+    
     // ✅ Show confirmation dialog
     setConfirmDialogData({
       channel: channel,
       filter: bulkFilter,
       recipientCount,
       mode: channel === 'whatsapp' ? whatsappMode : null,
+      hasMessage: !!template,
     });
     setShowConfirmDialog(true);
   };
@@ -208,7 +229,25 @@ const Invitations = () => {
   };
 
   const handleSendSelected = async () => {
-    if (selectedGuests.size === 0) { toast.error('Select at least one guest.'); return; }
+    if (selectedGuests.size === 0) { 
+      toast.error('Select at least one guest.'); 
+      return; 
+    }
+    
+    // ✅ VALIDATION: Check if message template is empty (for custom text modes)
+    if (channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) {
+      if (!template || template.trim() === '') {
+        toast.error(
+          <div>
+            <div style={{ fontWeight: 600 }}>Message template is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your message before sending.</div>
+          </div>,
+          { duration: 5000 }
+        );
+        return;
+      }
+    }
+    
     setSendingSelected(true);
     let sent = 0, failed = 0;
     for (const guestId of selectedGuests) {
