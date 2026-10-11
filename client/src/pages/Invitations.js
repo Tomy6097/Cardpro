@@ -18,6 +18,10 @@ const Invitations = () => {
   
   // ✅ NEW: WhatsApp sending mode (template vs custom)
   const [whatsappMode, setWhatsappMode] = useState('template'); // 'template' or 'custom'
+  
+  // ✅ NEW: Confirmation dialog state for bulk sends
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmDialogData, setConfirmDialogData] = useState(null);
 
   // SMS cost calculator
   const SMS_COST_TZS = 25; // TSh per SMS part (Beem Africa approximate)
@@ -164,19 +168,43 @@ const Invitations = () => {
   const handleSendBulk = () => {
     const filter = bulkFilter === 'not_sent' ? { notSent: true } : bulkFilter === 'pending_rsvp' ? { rsvpStatus: 'pending' } : {};
     
+    // ✅ Calculate how many guests will receive message
+    let recipientCount = stats.total || 0;
+    if (bulkFilter === 'not_sent') recipientCount = stats.notSent || 0;
+    if (bulkFilter === 'pending_rsvp') recipientCount = stats.total - (stats.confirmed || 0) - (stats.declined || 0);
+    
+    // ✅ Show confirmation dialog
+    setConfirmDialogData({
+      channel: channel,
+      filter: bulkFilter,
+      recipientCount,
+      mode: channel === 'whatsapp' ? whatsappMode : null,
+    });
+    setShowConfirmDialog(true);
+  };
+  
+  const confirmBulkSend = () => {
+    if (!confirmDialogData) return;
+    
+    const filter = bulkFilter === 'not_sent' ? { notSent: true } : bulkFilter === 'pending_rsvp' ? { rsvpStatus: 'pending' } : {};
+    
     // ✅ Prepare payload based on channel and mode
     const payload = { eventId, filter };
     
     // For WhatsApp: if template mode, don't send customMessage (uses approved template)
-    if (channel === 'whatsapp' && whatsappMode === 'template') {
+    if (confirmDialogData.channel === 'whatsapp' && whatsappMode === 'template') {
       payload.useTemplate = true; // Use approved template
     } else {
       payload.customMessage = template || undefined; // Use custom/plain text
       payload.useTemplate = false;
     }
     
-    if (channel === 'sms') bulkSMSMutation.mutate(payload);
+    if (confirmDialogData.channel === 'sms') bulkSMSMutation.mutate(payload);
     else bulkWAMutation.mutate(payload);
+    
+    // Close dialog
+    setShowConfirmDialog(false);
+    setConfirmDialogData(null);
   };
 
   const handleSendSelected = async () => {
@@ -587,6 +615,238 @@ const Invitations = () => {
           </div>
         )}
       </div>
+
+      {/* ✅ CONFIRMATION DIALOG */}
+      {showConfirmDialog && confirmDialogData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: 'var(--radius)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            maxWidth: '500px',
+            width: '100%',
+            padding: '0',
+            animation: 'slideIn 0.2s ease-out',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid var(--border-light)',
+              background: confirmDialogData.channel === 'sms' ? '#EFF6FF' : '#F0FDF4',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: confirmDialogData.channel === 'sms' ? '#3B82F6' : '#25D366',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                }}>
+                  {confirmDialogData.channel === 'sms' ? '📧' : '📲'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, fontFamily: 'Poppins', color: 'var(--primary-dark)' }}>
+                    Confirm Bulk Send
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+                    Please review before sending
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  background: 'var(--cream)',
+                  borderRadius: 'var(--radius)',
+                  padding: '16px',
+                  border: '2px solid var(--primary)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'Poppins', color: 'var(--primary)' }}>
+                      {confirmDialogData.recipientCount}
+                    </span>
+                    <span style={{ fontSize: '16px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      {confirmDialogData.recipientCount === 1 ? 'guest' : 'guests'}
+                    </span>
+                  </div>
+                  
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                    <strong>Channel:</strong> {confirmDialogData.channel === 'sms' ? 'SMS' : 'WhatsApp'}
+                    {confirmDialogData.mode && (
+                      <> ({confirmDialogData.mode === 'template' ? 'Template Mode' : 'Custom Text'})</>
+                    )}
+                    <br />
+                    <strong>Sending to:</strong>{' '}
+                    {confirmDialogData.filter === 'all' && 'All guests'}
+                    {confirmDialogData.filter === 'not_sent' && 'Guests who haven\'t received messages'}
+                    {confirmDialogData.filter === 'pending_rsvp' && 'Guests with pending RSVP'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cost estimate */}
+              {(() => {
+                const costPerMsg = confirmDialogData.channel === 'sms' ? 30 : 25;
+                const totalCost = costPerMsg * confirmDialogData.recipientCount;
+                return (
+                  <div style={{
+                    background: '#FFFBEB',
+                    border: '1px solid #FCD34D',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px',
+                    marginBottom: '20px',
+                    fontSize: '13px',
+                    color: '#78350F',
+                  }}>
+                    <strong>💰 Estimated Cost:</strong> ~TSh {totalCost.toLocaleString()}
+                    <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.8 }}>
+                      ({costPerMsg} TSh per message × {confirmDialogData.recipientCount} recipients)
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Warning for WhatsApp plain text */}
+              {confirmDialogData.channel === 'whatsapp' && confirmDialogData.mode === 'custom' && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px',
+                  marginBottom: '20px',
+                  fontSize: '12px',
+                  color: '#991B1B',
+                }}>
+                  <strong>⚠️ Warning:</strong> Plain text WhatsApp requires Business API approval. 
+                  Messages may fail if not approved yet. Consider using SMS instead.
+                </div>
+              )}
+
+              <div style={{
+                background: 'var(--info-light)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px',
+                fontSize: '12px',
+                color: 'var(--info)',
+                marginBottom: '20px',
+              }}>
+                <strong>📋 Note:</strong> Messages will be sent with a 1.2-second delay between each to avoid rate limits. 
+                This will take approximately {Math.ceil(confirmDialogData.recipientCount * 1.2 / 60)} minute(s).
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid var(--border-light)',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setConfirmDialogData(null);
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border)',
+                  background: 'white',
+                  color: 'var(--text-secondary)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.background = 'var(--cream)'}
+                onMouseOut={(e) => e.target.style.background = 'white'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBulkSend}
+                disabled={isLoading}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: 'var(--radius)',
+                  border: 'none',
+                  background: confirmDialogData.channel === 'sms' ? '#3B82F6' : '#25D366',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Inter',
+                  opacity: isLoading ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    Yes, Send to {confirmDialogData.recipientCount} Guest{confirmDialogData.recipientCount !== 1 ? 's' : ''}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
