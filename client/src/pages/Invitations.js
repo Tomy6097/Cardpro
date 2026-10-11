@@ -15,6 +15,9 @@ const Invitations = () => {
   const [selectedGuests, setSelectedGuests] = useState(new Set());
   const [guestSearch, setGuestSearch] = useState('');
   const [sendingSelected, setSendingSelected] = useState(false);
+  
+  // ✅ NEW: WhatsApp sending mode (template vs custom)
+  const [whatsappMode, setWhatsappMode] = useState('template'); // 'template' or 'custom'
 
   // SMS cost calculator
   const SMS_COST_TZS = 25; // TSh per SMS part (Beem Africa approximate)
@@ -89,7 +92,18 @@ const Invitations = () => {
 
   const handleSendBulk = () => {
     const filter = bulkFilter === 'not_sent' ? { notSent: true } : bulkFilter === 'pending_rsvp' ? { rsvpStatus: 'pending' } : {};
-    const payload = { eventId, customMessage: template || undefined, filter };
+    
+    // ✅ Prepare payload based on channel and mode
+    const payload = { eventId, filter };
+    
+    // For WhatsApp: if template mode, don't send customMessage (uses approved template)
+    if (channel === 'whatsapp' && whatsappMode === 'template') {
+      payload.useTemplate = true; // Use approved template
+    } else {
+      payload.customMessage = template || undefined; // Use custom/plain text
+      payload.useTemplate = false;
+    }
+    
     if (channel === 'sms') bulkSMSMutation.mutate(payload);
     else bulkWAMutation.mutate(payload);
   };
@@ -100,7 +114,16 @@ const Invitations = () => {
     let sent = 0, failed = 0;
     for (const guestId of selectedGuests) {
       try {
-        const payload = { guestId, customMessage: template || undefined };
+        // ✅ Prepare payload based on channel and mode
+        const payload = { guestId };
+        
+        if (channel === 'whatsapp' && whatsappMode === 'template') {
+          payload.useTemplate = true; // Use approved template
+        } else {
+          payload.customMessage = template || undefined;
+          payload.useTemplate = false;
+        }
+        
         if (channel === 'sms') await singleSMSMutation.mutateAsync(payload);
         else await singleWAMutation.mutateAsync(payload);
         sent++;
@@ -197,8 +220,101 @@ const Invitations = () => {
           ))}
         </div>
 
-        {/* Message Template */}
-        <div style={{ marginBottom: '8px' }}>
+        {/* ✅ NEW: WhatsApp Mode Selector (only show when WhatsApp is selected) */}
+        {channel === 'whatsapp' && (
+          <div style={{ marginBottom: '20px', background: 'var(--info-light)', borderRadius: 'var(--radius)', padding: '14px', border: '1px solid #BFDBFE' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-dark)', display: 'block', marginBottom: '10px' }}>
+              WhatsApp Sending Mode
+            </label>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setWhatsappMode('template')}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius)',
+                  border: whatsappMode === 'template' ? '2px solid #25D366' : '1px solid var(--border)',
+                  background: whatsappMode === 'template' ? '#F0FDF4' : 'var(--white)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'start', gap: '10px' }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    border: whatsappMode === 'template' ? '6px solid #25D366' : '2px solid var(--border)',
+                    flexShrink: 0,
+                    marginTop: '2px',
+                  }} />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--primary-dark)', marginBottom: '4px' }}>
+                      🎨 Template Mode
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Uses approved template with image & button
+                      <br />
+                      <span style={{ color: '#25D366', fontWeight: 500 }}>✓ Recommended for wedding!</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setWhatsappMode('custom')}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius)',
+                  border: whatsappMode === 'custom' ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  background: whatsappMode === 'custom' ? 'var(--cream)' : 'var(--white)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'start', gap: '10px' }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    border: whatsappMode === 'custom' ? '6px solid var(--primary)' : '2px solid var(--border)',
+                    flexShrink: 0,
+                    marginTop: '2px',
+                  }} />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--primary-dark)', marginBottom: '4px' }}>
+                      📝 Custom Text
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Simple text message (no image/button)
+                      <br />
+                      <span style={{ color: 'var(--warning)', fontWeight: 500 }}>⚡ Works immediately</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Mode explanation */}
+            {whatsappMode === 'template' ? (
+              <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F0FDF4', borderRadius: 'var(--radius-sm)', border: '1px solid #25D366', fontSize: '12px', color: '#065F46' }}>
+                <strong>✓ Template Mode:</strong> Sends rich WhatsApp message with wedding card image, formatted text, and "Confirm Attendance" button. Requires approved template.
+              </div>
+            ) : (
+              <div style={{ marginTop: '12px', padding: '10px 12px', background: '#FFFBEB', borderRadius: 'var(--radius-sm)', border: '1px solid #FCD34D', fontSize: '12px', color: '#78350F' }}>
+                <strong>⚡ Custom Text:</strong> Sends plain text message using your custom template below. No approval needed, works instantly!
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Message Template (only show for Custom mode in WhatsApp, or always for SMS) */}
+        {(channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
               Message Template
@@ -273,12 +389,40 @@ const Invitations = () => {
           })()}
         </div>
 
-        {/* Variables hint */}
-        <div style={{ background: 'var(--info-light)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: 'var(--info)' }}>
-          <strong>Variables:</strong> {'{guestName}'}, {'{eventName}'}, {'{date}'}, {'{venue}'}, {'{dressCode}'}, {'{confirmUrl}'}, {'{verificationCode}'}
-          <br/>
-          <span style={{ opacity: 0.8 }}>Tip: Use {'{verificationCode}'} for guests with basic phones who cannot click links</span>
-        </div>
+        {/* Variables hint - only show when message template is visible */}
+        {(channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) && (
+          <div style={{ background: 'var(--info-light)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: 'var(--info)' }}>
+            <strong>Variables:</strong> {'{guestName}'}, {'{eventName}'}, {'{date}'}, {'{venue}'}, {'{dressCode}'}, {'{confirmUrl}'}, {'{verificationCode}'}
+            <br/>
+            <span style={{ opacity: 0.8 }}>Tip: Use {'{verificationCode}'} for guests with basic phones who cannot click links</span>
+          </div>
+        )}
+        
+        {/* Template Mode Info - show when template mode is active */}
+        {channel === 'whatsapp' && whatsappMode === 'template' && (
+          <div style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)', borderRadius: 'var(--radius)', padding: '16px', marginBottom: '16px', border: '1px solid #25D366' }}>
+            <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+              <div style={{ fontSize: '24px' }}>🎊</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#065F46', marginBottom: '6px' }}>
+                  Wedding Invitation Template Active
+                </div>
+                <div style={{ fontSize: '12px', color: '#047857', lineHeight: '1.5' }}>
+                  Guests will receive a beautiful message with:
+                  <ul style={{ margin: '6px 0 0 0', paddingLeft: '20px' }}>
+                    <li>Wedding card image (header)</li>
+                    <li>Couple names & event details</li>
+                    <li>"Confirm Attendance" button</li>
+                    <li>Professional formatting</li>
+                  </ul>
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '11px', color: '#059669', background: 'white', padding: '6px 10px', borderRadius: 'var(--radius-sm)', display: 'inline-block' }}>
+                  ✓ Template automatically uses event data (date, venue, dress code, etc.)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* BULK MODE */}
         {mode === 'bulk' && (

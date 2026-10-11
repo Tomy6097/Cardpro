@@ -1,0 +1,155 @@
+═══════════════════════════════════════════════════════════════════
+  📱 CARDPRO WHATSAPP TEMPLATE - VARIABLE REFERENCE CARD
+═══════════════════════════════════════════════════════════════════
+
+📋 COPY-PASTE THIS ORDER WHEN CREATING TWILIO TEMPLATE:
+
+┌─────────────────────────────────────────────────────────────────┐
+│  VARIABLE ORDER (Exactly as sent by CardPro backend)            │
+├──────┬──────────────────────┬───────────────────────────────────┤
+│ VAR  │  FIELD NAME          │  EXAMPLE VALUE                    │
+├──────┼──────────────────────┼───────────────────────────────────┤
+│ {{1}}│  Card Image URL      │  https://cloudinary.com/card.jpg  │
+│ {{2}}│  Guest Name          │  John Doe                         │
+│ {{3}}│  Client Name         │  James & Anna                     │
+│ {{4}}│  Event Name          │  James & Anna Wedding             │
+│ {{5}}│  Date & Time         │  Jumamosi, 22 Desemba 2026        │
+│ {{6}}│  Venue               │  Golden Tulip Hotel               │
+│ {{7}}│  Dress Code          │  White and Black                  │
+│ {{8}}│  Confirmation URL    │  https://cardpro.app/invite/...   │
+│ {{9}}│  Verification Code   │  CP7821                           │
+└──────┴──────────────────────┴───────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+  🎨 TEMPLATE BODY TEXT (SWAHILI - RECOMMENDED)
+═══════════════════════════════════════════════════════════════════
+
+Mpendwa {{2}},
+
+{{3}} wanayo furaha kukualika kwenye harusi yao!
+
+📅 Tarehe: {{5}}
+📍 Mahali: {{6}}
+👔 Dress Code: {{7}}
+
+Tafadhali thibitisha kuhudhuria kwa kubofya button hapa chini.
+
+Code yako: {{9}}
+
+═══════════════════════════════════════════════════════════════════
+  🎨 TEMPLATE BODY TEXT (ENGLISH - ALTERNATIVE)
+═══════════════════════════════════════════════════════════════════
+
+Dear {{2}},
+
+{{3}} joyfully invite you to their wedding celebration!
+
+📅 Date: {{5}}
+📍 Venue: {{6}}
+👔 Dress Code: {{7}}
+
+Please confirm your attendance by clicking the button below.
+
+Your code: {{9}}
+
+═══════════════════════════════════════════════════════════════════
+  ⚙️ TWILIO TEMPLATE BUILDER SETTINGS
+═══════════════════════════════════════════════════════════════════
+
+Template Name:     cardpro_wedding_invitation_sw
+Language:          sw (Swahili)
+Category:          UTILITY
+Channel:           WhatsApp
+
+HEADER:
+  Type:            IMAGE
+  Variable:        {{1}}
+  Sample URL:      https://res.cloudinary.com/demo/sample.jpg
+
+BODY:
+  (Copy text from above)
+
+FOOTER:
+  Powered by CardPro Events
+
+BUTTONS:
+  Type:            URL (Call to Action)
+  Button Text:     Thibitisha Kuhudhuria
+  URL:             {{8}}
+
+═══════════════════════════════════════════════════════════════════
+  🔑 ENVIRONMENT VARIABLES TO SET
+═══════════════════════════════════════════════════════════════════
+
+Add to your .env file:
+
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_32_chars_minimum
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+TWILIO_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_TEST_TO=whatsapp:+255XXXXXXXXX
+
+═══════════════════════════════════════════════════════════════════
+  ✅ TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+Before going live:
+
+□ Template approved by Meta (1-3 days wait)
+□ TWILIO_CONTENT_SID added to .env
+□ Test endpoint works: POST /api/invitations/test-whatsapp
+□ Image displays correctly in WhatsApp
+□ Button redirects to correct RSVP page
+□ All 9 variables populate correctly
+□ Test with 3+ different phone numbers
+□ Rate limiting working (1.2s delay between messages)
+
+═══════════════════════════════════════════════════════════════════
+  💰 COST ESTIMATE
+═══════════════════════════════════════════════════════════════════
+
+Per message:     ~$0.015 - $0.035
+100 guests:      ~$1.50 - $3.50
+500 guests:      ~$7.50 - $17.50
+1000 guests:     ~$15 - $35
+
+Note: Cheaper than SMS! Plus includes image + button.
+
+═══════════════════════════════════════════════════════════════════
+  📞 QUICK LINKS
+═══════════════════════════════════════════════════════════════════
+
+Twilio Console:        https://console.twilio.com
+Content Templates:     console.twilio.com/us1/develop/sms/content-editor
+WhatsApp Senders:      console.twilio.com/us1/develop/sms/senders/whatsapp
+Logs:                  console.twilio.com/us1/monitor/logs/sms
+
+═══════════════════════════════════════════════════════════════════
+  🚨 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+Error: "Template not approved"
+Fix:   Wait 1-3 business days, check approval status
+
+Error: "Invalid ContentVariables"
+Fix:   Ensure variable order matches exactly (1-9 as above)
+
+Error: "Recipient not in sandbox"
+Fix:   Send "join <keyword>" to sandbox number first
+
+Error: "Image not loading"
+Fix:   Use HTTPS URL, max 5MB, JPG/PNG only
+
+═══════════════════════════════════════════════════════════════════
+
+📝 NOTES:
+
+- Variable {{4}} (Event Name) is included but optional to use in body
+- Variable {{3}} (Client Name) is NEW - perfect for "James & Anna"
+- Variable {{1}} (Image) must be publicly accessible URL
+- Button URL {{8}} includes verification code automatically
+- Template approval takes 1-3 days - plan accordingly!
+
+═══════════════════════════════════════════════════════════════════
+Version: 1.0.0 | Last Updated: December 2026 | CardPro System
+═══════════════════════════════════════════════════════════════════

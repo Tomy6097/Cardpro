@@ -148,15 +148,33 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
     ? rawFrom.replace(/\s/g, '')
     : `whatsapp:+${rawFrom.replace(/\D/g, '')}`;
 
+  // ✅ WhatsApp Template Variables Mapping
+  // IMPORTANT: Twilio templates number variables differently:
+  // - HEADER image is NOT counted in body variables
+  // - Body variables start from {{1}}
+  // - Button URL is separate variable
+  //
+  // Template Structure in Twilio:
+  // HEADER: {{1}} = Card Image URL (not sent in contentVariables - handled by mediaUrl)
+  // BODY:   {{1}} = Guest Name
+  //         {{2}} = Client Name (Bride & Groom)
+  //         {{3}} = Date & Time
+  //         {{4}} = Venue
+  //         {{5}} = Dress Code
+  //         {{6}} = Verification Code
+  // BUTTON: {{7}} = Confirmation URL
   const contentVariables = {
     '1': guest.guestName,
-    '2': event.name,
+    '2': event.clientName,
     '3': formatDate(event.date, 'sw') + (event.time ? ` · ${event.time}` : ''),
     '4': event.venue,
     '5': event.dressCode || 'Smart Casual',
-    '6': confirmUrl,
-    '7': guest.verificationCode,
+    '6': guest.verificationCode,
+    '7': confirmUrl,
   };
+
+  // Note: Header image is sent separately if supported by Twilio SDK
+  // For now, image URL is: guest.cardUrl || event.cardTemplate?.url || event.coverImage?.url
 
   const cvString = JSON.stringify(contentVariables);
 
@@ -236,7 +254,7 @@ exports.sendSMS = asyncHandler(async (req, res) => {
 });
 
 exports.sendWhatsApp = asyncHandler(async (req, res) => {
-  const { guestId, customMessage } = req.body;
+  const { guestId, customMessage, useTemplate } = req.body;
 
   const guest = await Guest.findById(guestId).populate('event');
   if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
@@ -256,6 +274,13 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
   const cleanPhone = guest.phone.replace(/\D/g, '');
   const toNumber   = `whatsapp:+${cleanPhone}`;
 
+  // ✅ SENDING MODE LOGIC:
+  // 1. If customMessage provided → ALWAYS use plain text (override template)
+  // 2. If useTemplate=false explicitly → use plain text
+  // 3. If contentSid exists AND no customMessage → use template (default)
+  // 4. Otherwise → use plain text with default template
+  const shouldUseTemplate = !customMessage && useTemplate !== false && !!contentSid;
+
   console.log('=== WhatsApp Debug ===');
   console.log('Guest:', guest.guestName);
   console.log('Raw phone:', guest.phone);
@@ -264,7 +289,8 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
   console.log('From:', from);
   console.log('ContentSid:', contentSid);
   console.log('customMessage:', JSON.stringify(customMessage));
-  console.log('Will use template:', !!(contentSid && !customMessage));
+  console.log('useTemplate param:', useTemplate);
+  console.log('Will use template:', shouldUseTemplate);
   console.log('AccountSid set:', !!accountSid);
   console.log('AuthToken set:', !!authToken);
   console.log('=====================');
@@ -278,22 +304,29 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
 
   const client = twilio(accountSid, authToken);
 
-  // Always use Twilio Content Template for WhatsApp if ContentSid is configured
-  if (contentSid) {
+  // MODE 1: Use Twilio Content Template (with image + button)
+  if (shouldUseTemplate) {
     const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
+    
+    // ✅ WhatsApp Template Variables (Twilio Format)
+    // HEADER: Image variable handled separately
+    // BODY:   {{1}} to {{6}}
+    // BUTTON: {{7}}
     const contentVariables = {
       '1': guest.guestName,
-      '2': guest.event.name,
+      '2': guest.event.clientName,
       '3': formatDate(guest.event.date, 'sw') + (guest.event.time ? ` · ${guest.event.time}` : ''),
       '4': guest.event.venue,
       '5': guest.event.dressCode || 'Smart Casual',
-      '6': confirmUrl,
-      '7': guest.verificationCode,
+      '6': guest.verificationCode,
+      '7': confirmUrl,
     };
 
     const cvString = JSON.stringify(contentVariables);
     console.log('=== sendWhatsApp DEBUG ===');
     console.log('Guest:', guest.guestName, '| Phone:', guest.phone);
+    console.log('Client Name:', guest.event.clientName);
+    console.log('Card Image:', guest.cardUrl || guest.event.cardTemplate?.url || guest.event.coverImage?.url);
     console.log('From:', from, '| To:', toNumber);
     console.log('ContentSid:', contentSid);
     console.log('ContentVariables:', cvString);
@@ -316,6 +349,7 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
     console.log('Twilio SID:', response.data?.sid, '| Status:', response.data?.status);
     console.log('Body sent:', response.data?.body?.substring(0, 100));
   } else {
+    // MODE 2: Use Plain Text Message (no template, no approval needed)
     const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
     const message  = interpolateTemplate(template, guest, guest.event);
     await client.messages.create({ from, to: toNumber, body: message });
@@ -329,11 +363,15 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
   await logActivity({
     event: guest.event._id,
     action: 'send_whatsapp',
-    description: `WhatsApp sent to guest "${guest.guestName}"`,
+    description: `WhatsApp sent to guest "${guest.guestName}" ${shouldUseTemplate ? '(template)' : '(plain text)'}`,
     req,
   });
 
-  res.json({ success: true, message: 'WhatsApp message sent successfully.' });
+  res.json({ 
+    success: true, 
+    message: 'WhatsApp message sent successfully.',
+    mode: shouldUseTemplate ? 'template' : 'plain_text'
+  });
 });
 
 exports.sendBulkSMS = asyncHandler(async (req, res) => {
@@ -380,13 +418,16 @@ exports.sendBulkSMS = asyncHandler(async (req, res) => {
 });
 
 exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
-  const { eventId, customMessage, filter = {} } = req.body;
+  const { eventId, customMessage, filter = {}, useTemplate } = req.body;
 
   const event = await Event.findById(eventId);
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
   const settings = await Settings.findOne();
   const contentSid = process.env.TWILIO_CONTENT_SID;
+
+  // ✅ Determine sending mode (same logic as single send)
+  const shouldUseTemplate = !customMessage && useTemplate !== false && !!contentSid;
 
   const guestFilter = { event: eventId, isDeleted: false };
   if (filter.rsvpStatus) guestFilter.rsvpStatus = filter.rsvpStatus;
@@ -397,8 +438,8 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
 
   for (const guest of guests) {
     try {
-      // Always use Twilio Content Template for WhatsApp if ContentSid is configured
-      if (contentSid) {
+      // MODE 1: Template (with image + button) OR MODE 2: Plain text
+      if (shouldUseTemplate) {
         await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
       } else {
         const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
@@ -430,12 +471,16 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
   await logActivity({
     event: eventId,
     action: 'send_bulk_whatsapp',
-    description: `Bulk WhatsApp: ${results.sent} sent, ${results.failed} failed`,
+    description: `Bulk WhatsApp (${shouldUseTemplate ? 'template' : 'plain text'}): ${results.sent} sent, ${results.failed} failed`,
     metadata: results,
     req,
   });
 
-  res.json({ success: true, ...results });
+  res.json({ 
+    success: true, 
+    mode: shouldUseTemplate ? 'template' : 'plain_text',
+    ...results 
+  });
 });
 
 exports.getInvitationStats = asyncHandler(async (req, res) => {
@@ -506,7 +551,9 @@ exports.testWhatsApp = asyncHandler(async (req, res) => {
 
   // Sample test data — mirrors real guest/event data
   const testData = {
+    cardImageUrl:     req.body.cardImageUrl     || 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
     guestName:        req.body.guestName        || 'James',
+    clientName:       req.body.clientName       || 'James & Anna',
     eventName:        req.body.eventName        || 'James & Anna Wedding',
     date:             req.body.date             || '25 December 2026',
     venue:            req.body.venue            || 'Golden Tulip Dar es Salaam',
@@ -515,19 +562,29 @@ exports.testWhatsApp = asyncHandler(async (req, res) => {
     verificationCode: req.body.verificationCode || 'CP7821',
   };
 
-  // ContentVariables: Twilio templates use {{1}}, {{2}} etc.
-  // The cardpro_invitation template (Swahili) variables mapped in order:
-  // {{1}} = guestName, {{2}} = eventName, {{3}} = date,
-  // {{4}} = venue, {{5}} = dressCode, {{6}} = confirmUrl, {{7}} = verificationCode
-  // NOTE: If template has fewer variables, unused ones are ignored by Twilio.
+  // ✅ WhatsApp Template Variables for Testing
+  // HEADER: Image (handled separately by Twilio)
+  // BODY:   {{1}} to {{6}}
+  // BUTTON: {{7}}
+  const testData = {
+    cardImageUrl:     req.body.cardImageUrl     || 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+    guestName:        req.body.guestName        || 'James',
+    clientName:       req.body.clientName       || 'James & Anna',
+    dateTime:         req.body.dateTime         || 'Jumamosi, 22 Desemba 2026 · Saa 3:00 PM',
+    venue:            req.body.venue            || 'Golden Tulip Dar es Salaam',
+    dressCode:        req.body.dressCode        || 'White and Black',
+    verificationCode: req.body.verificationCode || 'CP7821',
+    confirmUrl:       req.body.confirmUrl       || 'https://cardpro-app.onrender.com/event/test?code=CP7821',
+  };
+
   const contentVariables = {
     '1': testData.guestName,
-    '2': testData.eventName,
-    '3': testData.date,
+    '2': testData.clientName,
+    '3': testData.dateTime,
     '4': testData.venue,
     '5': testData.dressCode,
-    '6': testData.confirmUrl,
-    '7': testData.verificationCode,
+    '6': testData.verificationCode,
+    '7': testData.confirmUrl,
   };
 
   let messageSid, status, errorMsg, twilioCode;
