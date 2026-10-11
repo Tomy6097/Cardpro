@@ -11,7 +11,7 @@ const T = {
     date: 'Tarehe', venue: 'Mahali', dressCode: 'Mavazi',
     countdown: 'Muda Uliosalia', days: 'Siku', hours: 'Saa', mins: 'Dakika', secs: 'Sekunde',
     happeningNow: 'Sherehe inaendelea sasa!',
-    confirmBtn: 'Thibitisha Mahudhurio Yangu', declineBtn: 'Sitaweza Kuhudhuria',
+    eventOver: 'Sherehe imeenda vema sana! Asante kwa ushiriki wako. Sisi kama Cardpro tunakutakia kila la kheri. BYE BYE! 🎉',    confirmBtn: 'Thibitisha Mahudhurio Yangu', declineBtn: 'Sitaweza Kuhudhuria',
     confirmed: 'Mahudhurio Yamethibitishwa', confirmedSub: 'Tunatarajia kukuona!',
     declined: 'Asante kwa kutujulisha!',
     declineFormTitle: 'Pole kwa kutoweza kuhudhuria',
@@ -38,6 +38,7 @@ const T = {
     date: 'Date', venue: 'Venue', dressCode: 'Dress Code',
     countdown: 'Countdown', days: 'Days', hours: 'Hrs', mins: 'Min', secs: 'Sec',
     happeningNow: 'The event is happening now!',
+    eventOver: 'The event went wonderfully! Thank you for your participation. From all of us at Cardpro, we wish you all the best. BYE BYE! 🎉',
     confirmBtn: 'Confirm My Attendance', declineBtn: 'Unable to Attend',
     confirmed: 'Attendance Confirmed', confirmedSub: 'We look forward to seeing you!',
     declined: 'Thank you for letting us know!',
@@ -307,14 +308,23 @@ const EventWebsite = () => {
   useEffect(() => {
     if (!event?.date) return;
     const calc = () => {
-      const diff = new Date(event.date) - new Date();
-      if (diff <= 0) { setTimeLeft({done:true}); return; }
-      setTimeLeft({
-        days:    Math.floor(diff/86400000),
-        hours:   Math.floor((diff/3600000)%24),
-        minutes: Math.floor((diff/60000)%60),
-        seconds: Math.floor((diff/1000)%60),
-      });
+      const eventTime = new Date(event.date).getTime();
+      const now       = new Date().getTime();
+      const diff      = eventTime - now;
+      const hoursAfter = (now - eventTime) / (1000 * 60 * 60);
+
+      if (hoursAfter > 12) {
+        setTimeLeft({ done: true, over: true });
+      } else if (diff <= 0) {
+        setTimeLeft({ done: true, over: false });
+      } else {
+        setTimeLeft({
+          days:    Math.floor(diff/86400000),
+          hours:   Math.floor((diff/3600000)%24),
+          minutes: Math.floor((diff/60000)%60),
+          seconds: Math.floor((diff/1000)%60),
+        });
+      }
     };
     calc();
     const ti = setInterval(calc, 1000);
@@ -581,10 +591,18 @@ const EventWebsite = () => {
                 </div>
               </div>
             )}
-            {timeLeft.done && (
+            {timeLeft.done && !timeLeft.over && (
               <p style={{textAlign:'center',color:pc,fontWeight:700,fontSize:'16px',margin:'28px 0',fontFamily:ff}}>
                 {t.happeningNow}
               </p>
+            )}
+            {timeLeft.done && timeLeft.over && (
+              <div style={{margin:'28px 0',padding:'20px',background:`${pc}15`,borderRadius:'16px',border:`1px solid ${pc}33`,textAlign:'center',animation:'fadeIn .5s'}}>
+                <p style={{fontSize:'28px',margin:'0 0 10px'}}>🎉</p>
+                <p style={{color:pc,fontWeight:700,fontSize:'16px',margin:'0 0 6px',fontFamily:ff,lineHeight:1.5}}>
+                  {t.eventOver}
+                </p>
+              </div>
             )}
 
             {/* RSVP buttons */}
