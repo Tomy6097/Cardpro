@@ -166,13 +166,26 @@ const Invitations = () => {
   });
 
   const handleSendBulk = () => {
-    // ✅ VALIDATION: Check if message template is empty (for custom text modes)
-    if (channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) {
+    // ✅ VALIDATION: Check if message template is empty for SMS and WhatsApp custom text
+    if (channel === 'sms') {
       if (!template || template.trim() === '') {
         toast.error(
           <div>
-            <div style={{ fontWeight: 600 }}>Message template is empty!</div>
-            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your message before sending.</div>
+            <div style={{ fontWeight: 600 }}>📝 SMS template is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your SMS message before sending.</div>
+          </div>,
+          { duration: 5000 }
+        );
+        return; // Stop execution
+      }
+    }
+    
+    if (channel === 'whatsapp' && whatsappMode === 'custom') {
+      if (!template || template.trim() === '') {
+        toast.error(
+          <div>
+            <div style={{ fontWeight: 600 }}>📝 WhatsApp message is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your WhatsApp message before sending.</div>
           </div>,
           { duration: 5000 }
         );
@@ -234,13 +247,26 @@ const Invitations = () => {
       return; 
     }
     
-    // ✅ VALIDATION: Check if message template is empty (for custom text modes)
-    if (channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) {
+    // ✅ VALIDATION: Check if message template is empty for SMS and WhatsApp custom text
+    if (channel === 'sms') {
       if (!template || template.trim() === '') {
         toast.error(
           <div>
-            <div style={{ fontWeight: 600 }}>Message template is empty!</div>
-            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your message before sending.</div>
+            <div style={{ fontWeight: 600 }}>📝 SMS template is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your SMS message before sending.</div>
+          </div>,
+          { duration: 5000 }
+        );
+        return;
+      }
+    }
+    
+    if (channel === 'whatsapp' && whatsappMode === 'custom') {
+      if (!template || template.trim() === '') {
+        toast.error(
+          <div>
+            <div style={{ fontWeight: 600 }}>📝 WhatsApp message is empty!</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Please write your WhatsApp message before sending.</div>
           </div>,
           { duration: 5000 }
         );
