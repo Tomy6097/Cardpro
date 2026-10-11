@@ -122,8 +122,27 @@ const Invitations = () => {
   const singleWAMutation = useMutation({
     mutationFn: (d) => invitationsAPI.sendWhatsApp(d),
     onSuccess: (response) => { 
-      refetchStats(); 
-      toast.success(response.data.message || 'WhatsApp sent!');
+      refetchStats();
+      
+      const data = response.data;
+      
+      // Show warning if present (for plain text mode before approval)
+      if (data.warning) {
+        toast(
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: '4px', color: '#F59E0B' }}>
+              ⚠️ {data.message}
+            </div>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>{data.warning}</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
+              Check Twilio Console logs to confirm delivery
+            </div>
+          </div>,
+          { duration: 10000, icon: '⚠️' }
+        );
+      } else {
+        toast.success(data.message || 'WhatsApp sent!');
+      }
     },
     onError: (err) => { 
       const errorMsg = err.response?.data?.message || err.message || 'Failed to send WhatsApp';

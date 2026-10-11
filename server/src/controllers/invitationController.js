@@ -453,7 +453,17 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
       // MODE 2: Use Plain Text Message (no template, no approval needed)
       const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
       const message  = interpolateTemplate(template, guest, guest.event);
-      await client.messages.create({ from, to: toNumber, body: message });
+      
+      const result = await client.messages.create({ from, to: toNumber, body: message });
+      
+      // Log Twilio message SID for tracking
+      console.log('Twilio Message SID:', result.sid, 'Status:', result.status);
+      
+      // ⚠️ IMPORTANT: Twilio returns "queued" or "accepted" immediately
+      // Actual delivery happens later! Check Twilio Console for final status.
+      if (result.status === 'failed' || result.status === 'undelivered') {
+        throw new Error(`Message ${result.status}: ${result.errorMessage || 'Unknown error'}`);
+      }
     }
 
     // ✅ SUCCESS: Update guest record
@@ -472,7 +482,8 @@ exports.sendWhatsApp = asyncHandler(async (req, res) => {
     res.json({ 
       success: true, 
       message: 'WhatsApp message sent successfully.',
-      mode: shouldUseTemplate ? 'template' : 'plain_text'
+      mode: shouldUseTemplate ? 'template' : 'plain_text',
+      warning: shouldUseTemplate ? null : 'Plain text WhatsApp requires WhatsApp Business API approval. Message is queued but may fail if API not approved yet. Check Twilio Console logs in 1-2 minutes for confirmation.'
     });
 
   } catch (error) {
@@ -737,24 +748,23 @@ exports.testWhatsApp = asyncHandler(async (req, res) => {
     });
 
   } catch (err) {
-    // Safe error — never expose auth token
-    twilioCode = err.code || null;
-    errorMsg = err.message || 'Unknown Twilio error';
-
-    // Remove any potential credential leaks from error message
-    errorMsg = errorMsg.replace(/AC[a-f0-9]{32}/gi, '[ACCOUNT_SID]');
-    errorMsg = errorMsg.replace(/[a-f0-9]{32}/gi, (m) => m.length === 32 ? '[TOKEN]' : m);
+    // Safe error — parse with our error handler
+    const friendlyError = parseWhatsAppError(err);
+    
+    twilioCode = err.code || err.response?.data?.code;
+    errorMsg = friendlyError.message;
 
     await logActivity({
       action: 'test_whatsapp_failed',
       description: `WhatsApp test FAILED — Code: ${twilioCode} — ${errorMsg}`,
     });
 
-    res.status(500).json({
+    res.status(friendlyError.statusCode).json({
       success: false,
       message: errorMsg,
       twilioCode,
-      troubleshoot: getTroubleshootHint(twilioCode, errorMsg),
+      suggestion: friendlyError.suggestion,
+      troubleshoot: 'Check if you joined sandbox: Send "join <code>" to +1 415 523 8886',
     });
   }
 });
