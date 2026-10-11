@@ -549,19 +549,6 @@ exports.testWhatsApp = asyncHandler(async (req, res) => {
     });
   }
 
-  // Sample test data — mirrors real guest/event data
-  const testData = {
-    cardImageUrl:     req.body.cardImageUrl     || 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-    guestName:        req.body.guestName        || 'James',
-    clientName:       req.body.clientName       || 'James & Anna',
-    eventName:        req.body.eventName        || 'James & Anna Wedding',
-    date:             req.body.date             || '25 December 2026',
-    venue:            req.body.venue            || 'Golden Tulip Dar es Salaam',
-    dressCode:        req.body.dressCode        || 'White and Black',
-    confirmUrl:       req.body.confirmUrl       || 'https://example.com/invite/test123',
-    verificationCode: req.body.verificationCode || 'CP7821',
-  };
-
   // ✅ WhatsApp Template Variables for Testing
   // HEADER: Image (handled separately by Twilio)
   // BODY:   {{1}} to {{6}}
