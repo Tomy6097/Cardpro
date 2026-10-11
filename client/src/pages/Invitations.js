@@ -315,79 +315,81 @@ const Invitations = () => {
 
         {/* Message Template (only show for Custom mode in WhatsApp, or always for SMS) */}
         {(channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-              Message Template
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
-                (auto-saved)
-              </span>
-            </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {template && (
-                <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  Saved
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                Message Template
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
+                  (auto-saved)
                 </span>
-              )}
-              {template && (
-                <button
-                  onClick={() => setTemplate('')}
-                  style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                >
-                  Clear template
-                </button>
-              )}
-            </div>
-          </div>
-          <Textarea
-            value={template}
-            onChange={e => setTemplate(e.target.value)}
-            placeholder={channel === 'sms' ? defaultSMSTemplate : defaultWATemplate}
-            rows={5}
-          />
-
-          {/* SMS Cost Calculator — only for SMS channel */}
-          {channel === 'sms' && (() => {
-            const msgText = template || defaultSMSTemplate;
-            // Estimate with a sample guest name substitution
-            const sampleText = msgText
-              .replace(/{guestName}/g, 'Tomy James')
-              .replace(/{eventName}/g, ev?.name || 'Harusi')
-              .replace(/{date}/g, 'Ijumaa, 25 Aprili 2026')
-              .replace(/{venue}/g, ev?.venue || 'Red Hall')
-              .replace(/{dressCode}/g, ev?.dressCode || 'Smart Casual')
-              .replace(/{confirmUrl}/g, 'https://cardpro.co.tz/event/x?code=ABCDEF123456')
-              .replace(/{verificationCode}/g, 'ABCDEF123456');
-            const sms = calcSMS(sampleText);
-            const totalGuests = stats.total || 0;
-            const costPerGuest = sms.parts * SMS_COST_TZS;
-            const totalCost = costPerGuest * totalGuests;
-            return (
-              <div style={{ marginTop: '8px', padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C2410C" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                    <span style={{ color: '#92400E', fontWeight: 600 }}>SMS Calculator</span>
-                  </div>
-                  <span style={{ color: '#78350F' }}>
-                    <strong>{sms.chars}</strong> chars → <strong>{sms.parts}</strong> SMS {sms.parts > 1 ? 'parts' : 'part'}
-                    {sms.isUnicode && <span style={{ color: '#B45309', marginLeft: '4px' }}>(Unicode)</span>}
-                    <span style={{ color: 'var(--text-muted)', marginLeft: '4px' }}>({sms.remaining} remaining)</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {template && (
+                  <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Saved
                   </span>
-                  <span style={{ color: '#78350F' }}>
-                    Per guest: <strong>~TSh {costPerGuest.toLocaleString()}</strong>
-                  </span>
-                  {totalGuests > 0 && (
-                    <span style={{ color: '#92400E', fontWeight: 700, background: '#FED7AA', padding: '2px 10px', borderRadius: '12px' }}>
-                      {totalGuests} guests: ~TSh {totalCost.toLocaleString()}
-                    </span>
-                  )}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>*TSh {SMS_COST_TZS}/SMS (Beem estimate)</span>
-                </div>
+                )}
+                {template && (
+                  <button
+                    onClick={() => setTemplate('')}
+                    style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                  >
+                    Clear template
+                  </button>
+                )}
               </div>
-            );
-          })()}
-        </div>
+            </div>
+            <Textarea
+              value={template}
+              onChange={e => setTemplate(e.target.value)}
+              placeholder={channel === 'sms' ? defaultSMSTemplate : defaultWATemplate}
+              rows={5}
+            />
+
+            {/* SMS Cost Calculator — only for SMS channel */}
+            {channel === 'sms' && (() => {
+              const msgText = template || defaultSMSTemplate;
+              // Estimate with a sample guest name substitution
+              const sampleText = msgText
+                .replace(/{guestName}/g, 'Tomy James')
+                .replace(/{eventName}/g, ev?.name || 'Harusi')
+                .replace(/{date}/g, 'Ijumaa, 25 Aprili 2026')
+                .replace(/{venue}/g, ev?.venue || 'Red Hall')
+                .replace(/{dressCode}/g, ev?.dressCode || 'Smart Casual')
+                .replace(/{confirmUrl}/g, 'https://cardpro.co.tz/event/x?code=ABCDEF123456')
+                .replace(/{verificationCode}/g, 'ABCDEF123456');
+              const sms = calcSMS(sampleText);
+              const totalGuests = stats.total || 0;
+              const costPerGuest = sms.parts * SMS_COST_TZS;
+              const totalCost = costPerGuest * totalGuests;
+              return (
+                <div style={{ marginTop: '8px', padding: '10px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C2410C" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                      <span style={{ color: '#92400E', fontWeight: 600 }}>SMS Calculator</span>
+                    </div>
+                    <span style={{ color: '#78350F' }}>
+                      <strong>{sms.chars}</strong> chars → <strong>{sms.parts}</strong> SMS {sms.parts > 1 ? 'parts' : 'part'}
+                      {sms.isUnicode && <span style={{ color: '#B45309', marginLeft: '4px' }}>(Unicode)</span>}
+                      <span style={{ color: 'var(--text-muted)', marginLeft: '4px' }}>({sms.remaining} remaining)</span>
+                    </span>
+                    <span style={{ color: '#78350F' }}>
+                      Per guest: <strong>~TSh {costPerGuest.toLocaleString()}</strong>
+                    </span>
+                    {totalGuests > 0 && (
+                      <span style={{ color: '#92400E', fontWeight: 700, background: '#FED7AA', padding: '2px 10px', borderRadius: '12px' }}>
+                        {totalGuests} guests: ~TSh {totalCost.toLocaleString()}
+                      </span>
+                    )}
+                    <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>*TSh {SMS_COST_TZS}/SMS (Beem estimate)</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Variables hint - only show when message template is visible */}
         {(channel === 'sms' || (channel === 'whatsapp' && whatsappMode === 'custom')) && (
