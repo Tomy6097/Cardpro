@@ -285,7 +285,7 @@ const EventWebsite = () => {
   const [msgSent, setMsgSent] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
   const [settings, setSettings] = useState(null);
-  const [lang,    setLang]    = useState('en'); // 'sw' | 'en'
+  const [lang,    setLang]    = useState('sw'); // 'sw' | 'en'
   const heroRef = useRef(null);
 
   const t = T[lang];
@@ -605,8 +605,8 @@ const EventWebsite = () => {
               </div>
             )}
 
-            {/* RSVP buttons */}
-            {guest && code && !rsvpDone && !rsvpDeclined && guest.rsvpStatus !== 'confirmed' && (
+            {/* RSVP buttons — hide if event is over */}
+            {guest && code && !rsvpDone && !rsvpDeclined && guest.rsvpStatus !== 'confirmed' && !timeLeft.over && (
               <div style={{marginTop:'24px'}}>
                 {event.rsvpDeadline && new Date() > new Date(event.rsvpDeadline) ? (
                   /* Deadline passed */
