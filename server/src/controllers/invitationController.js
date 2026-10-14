@@ -225,7 +225,9 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
   const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
   const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
   const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
-  const contentSid = process.env.TWILIO_CONTENT_SID;
+  
+  // ✅ Priority: Settings selected template → .env fallback
+  const contentSid = settings?.selectedWhatsappTemplateSid || process.env.TWILIO_CONTENT_SID;
 
   if (!accountSid || !authToken) {
     throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
@@ -234,7 +236,7 @@ const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => 
     throw new Error('TWILIO_WHATSAPP_FROM not configured.');
   }
   if (!contentSid) {
-    throw new Error('TWILIO_CONTENT_SID not configured.');
+    throw new Error('No WhatsApp template selected. Please select a template in Settings or set TWILIO_CONTENT_SID in .env');
   }
 
   const client = twilio(accountSid, authToken);

@@ -105,6 +105,11 @@ export const settingsAPI = {
   uploadLogo: (formData) => api.post('/settings/logo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  // ✅ NEW: WhatsApp Template Management
+  getWhatsappTemplates: () => api.get('/settings/whatsapp-templates'),
+  addWhatsappTemplate: (data) => api.post('/settings/whatsapp-templates', data),
+  selectWhatsappTemplate: (data) => api.put('/settings/whatsapp-templates/select', data),
+  deleteWhatsappTemplate: (contentSid) => api.delete(`/settings/whatsapp-templates/${contentSid}`),
 };
 
 // Dashboard

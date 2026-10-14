@@ -26,6 +26,18 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     default: 'Dear {guestName},\n\nYou are cordially invited to *{eventName}*\n\nDate: {date}\nVenue: {venue}\n\nClick to confirm: {confirmUrl}',
   },
+  
+  // ✅ NEW: Support for multiple WhatsApp templates
+  whatsappTemplates: [{
+    name: { type: String, required: true },        // e.g., "Wedding Invitation V1"
+    contentSid: { type: String, required: true },  // Twilio Content SID
+    description: String,                           // Optional description
+    isActive: { type: Boolean, default: false },   // Which template is currently active
+    createdAt: { type: Date, default: Date.now },
+  }],
+  
+  // Selected template (fallback to TWILIO_CONTENT_SID from .env if not set)
+  selectedWhatsappTemplateSid: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

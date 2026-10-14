@@ -78,3 +78,120 @@ exports.uploadLogo = asyncHandler(async (req, res) => {
 
   res.json({ success: true, logo: settings.logo });
 });
+
+// ✅ NEW: WhatsApp Template Management
+
+// Get all WhatsApp templates
+exports.getWhatsappTemplates = asyncHandler(async (req, res) => {
+  let settings = await Settings.findOne();
+  if (!settings) {
+    settings = await Settings.create({ companyName: 'Cardpro' });
+  }
+
+  res.json({
+    success: true,
+    templates: settings.whatsappTemplates || [],
+    selectedTemplateSid: settings.selectedWhatsappTemplateSid || process.env.TWILIO_CONTENT_SID,
+  });
+});
+
+// Add a new WhatsApp template
+exports.addWhatsappTemplate = asyncHandler(async (req, res) => {
+  const { name, contentSid, description } = req.body;
+
+  if (!name || !contentSid) {
+    return res.status(400).json({ success: false, message: 'Template name and Content SID are required.' });
+  }
+
+  let settings = await Settings.findOne();
+  if (!settings) settings = new Settings();
+
+  // Check if Content SID already exists
+  const exists = settings.whatsappTemplates.some(t => t.contentSid === contentSid);
+  if (exists) {
+    return res.status(400).json({ success: false, message: 'This Content SID is already added.' });
+  }
+
+  settings.whatsappTemplates.push({
+    name,
+    contentSid,
+    description: description || '',
+    isActive: false,
+  });
+
+  await settings.save();
+
+  await logActivity({
+    action: 'add_whatsapp_template',
+    description: `Added WhatsApp template: ${name}`,
+    req,
+  });
+
+  res.json({ success: true, message: 'Template added successfully.', templates: settings.whatsappTemplates });
+});
+
+// Select/activate a WhatsApp template
+exports.selectWhatsappTemplate = asyncHandler(async (req, res) => {
+  const { contentSid } = req.body;
+
+  if (!contentSid) {
+    return res.status(400).json({ success: false, message: 'Content SID is required.' });
+  }
+
+  let settings = await Settings.findOne();
+  if (!settings) settings = new Settings();
+
+  // Mark all templates as inactive
+  settings.whatsappTemplates.forEach(t => t.isActive = false);
+
+  // Mark selected template as active
+  const selectedTemplate = settings.whatsappTemplates.find(t => t.contentSid === contentSid);
+  if (selectedTemplate) {
+    selectedTemplate.isActive = true;
+  }
+
+  // Set the selected template SID
+  settings.selectedWhatsappTemplateSid = contentSid;
+  await settings.save();
+
+  await logActivity({
+    action: 'select_whatsapp_template',
+    description: `Selected WhatsApp template: ${selectedTemplate?.name || contentSid}`,
+    req,
+  });
+
+  res.json({ success: true, message: 'Template activated successfully.', selectedTemplateSid: contentSid });
+});
+
+// Delete a WhatsApp template
+exports.deleteWhatsappTemplate = asyncHandler(async (req, res) => {
+  const { contentSid } = req.params;
+
+  let settings = await Settings.findOne();
+  if (!settings) {
+    return res.status(404).json({ success: false, message: 'Settings not found.' });
+  }
+
+  const templateIndex = settings.whatsappTemplates.findIndex(t => t.contentSid === contentSid);
+  if (templateIndex === -1) {
+    return res.status(404).json({ success: false, message: 'Template not found.' });
+  }
+
+  const templateName = settings.whatsappTemplates[templateIndex].name;
+
+  // Check if this is the currently selected template
+  if (settings.selectedWhatsappTemplateSid === contentSid) {
+    settings.selectedWhatsappTemplateSid = null;
+  }
+
+  settings.whatsappTemplates.splice(templateIndex, 1);
+  await settings.save();
+
+  await logActivity({
+    action: 'delete_whatsapp_template',
+    description: `Deleted WhatsApp template: ${templateName}`,
+    req,
+  });
+
+  res.json({ success: true, message: 'Template deleted successfully.', templates: settings.whatsappTemplates });
+});
