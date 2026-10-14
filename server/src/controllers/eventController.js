@@ -237,15 +237,34 @@ exports.getEventStats = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
-  const [total, confirmed, pending, declined, scanned, smsSent, whatsappSent] = await Promise.all([
-    Guest.countDocuments({ event: event._id, isDeleted: false }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, rsvpStatus: 'confirmed' }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, rsvpStatus: 'pending' }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, rsvpStatus: 'declined' }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, scanStatus: 'scanned' }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, messageChannel: 'sms' }),
-    Guest.countDocuments({ event: event._id, isDeleted: false, messageChannel: 'whatsapp' }),
+  // ✅ Get all guests to calculate HEADCOUNT (actual people, not just records)
+  const { TICKET_CAPACITY } = require('../models/Guest');
+  
+  const [allGuests, confirmedGuests, pendingGuests, declinedGuests, scannedGuests] = await Promise.all([
+    Guest.find({ event: event._id, isDeleted: false }),
+    Guest.find({ event: event._id, isDeleted: false, rsvpStatus: 'confirmed' }),
+    Guest.find({ event: event._id, isDeleted: false, rsvpStatus: 'pending' }),
+    Guest.find({ event: event._id, isDeleted: false, rsvpStatus: 'declined' }),
+    Guest.find({ event: event._id, isDeleted: false, scanStatus: 'scanned' }),
   ]);
+
+  // Calculate HEADCOUNT (actual people based on ticket capacity)
+  const calculateHeadcount = (guests) => {
+    return guests.reduce((sum, guest) => {
+      const capacity = TICKET_CAPACITY[guest.ticketType] || 1;
+      return sum + capacity;
+    }, 0);
+  };
+
+  const total = calculateHeadcount(allGuests);
+  const confirmed = calculateHeadcount(confirmedGuests);
+  const pending = calculateHeadcount(pendingGuests);
+  const declined = calculateHeadcount(declinedGuests);
+  const scanned = calculateHeadcount(scannedGuests);
+
+  // Message counts (still count records, not people)
+  const smsSent = await Guest.countDocuments({ event: event._id, isDeleted: false, messageChannel: 'sms' });
+  const whatsappSent = await Guest.countDocuments({ event: event._id, isDeleted: false, messageChannel: 'whatsapp' });
 
   // Update stats
   await Event.findByIdAndUpdate(event._id, {

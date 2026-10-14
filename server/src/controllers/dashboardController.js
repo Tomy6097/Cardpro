@@ -9,23 +9,38 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // ✅ Calculate HEADCOUNT (actual people) instead of just counting records
+  const { TICKET_CAPACITY } = require('../models/Guest');
+  
+  const calculateHeadcount = (guests) => {
+    return guests.reduce((sum, guest) => {
+      const capacity = TICKET_CAPACITY[guest.ticketType] || 1;
+      return sum + capacity;
+    }, 0);
+  };
+
   const [
     totalEvents, activeEvents, todayEvents,
-    totalGuests, confirmedGuests, pendingGuests, scannedGuests,
+    allGuests, confirmedGuestsList, pendingGuestsList, scannedGuestsList,
     smsSent, whatsappSent,
     recentActivity,
   ] = await Promise.all([
     Event.countDocuments(),
     Event.countDocuments({ status: 'active' }),
     Event.countDocuments({ date: { $gte: today, $lt: tomorrow } }),
-    Guest.countDocuments({ isDeleted: false }),
-    Guest.countDocuments({ isDeleted: false, rsvpStatus: 'confirmed' }),
-    Guest.countDocuments({ isDeleted: false, rsvpStatus: 'pending' }),
-    Guest.countDocuments({ isDeleted: false, scanStatus: 'scanned' }),
+    Guest.find({ isDeleted: false }),
+    Guest.find({ isDeleted: false, rsvpStatus: 'confirmed' }),
+    Guest.find({ isDeleted: false, rsvpStatus: 'pending' }),
+    Guest.find({ isDeleted: false, scanStatus: 'scanned' }),
     Guest.countDocuments({ isDeleted: false, messageChannel: 'sms' }),
     Guest.countDocuments({ isDeleted: false, messageChannel: 'whatsapp' }),
     ActivityLog.find().sort({ createdAt: -1 }).limit(10).populate('user', 'username').populate('event', 'name'),
   ]);
+
+  const totalGuests = calculateHeadcount(allGuests);
+  const confirmedGuests = calculateHeadcount(confirmedGuestsList);
+  const pendingGuests = calculateHeadcount(pendingGuestsList);
+  const scannedGuests = calculateHeadcount(scannedGuestsList);
 
   // Events per status chart data
   const [completedEvents, cancelledEvents] = await Promise.all([
@@ -33,17 +48,18 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     Event.countDocuments({ status: 'cancelled' }),
   ]);
 
-  // Guest trend - last 7 days
+  // Guest trend - last 7 days (headcount)
   const guestTrend = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const next = new Date(d);
     next.setDate(next.getDate() + 1);
-    const count = await Guest.countDocuments({
+    const dayGuests = await Guest.find({
       isDeleted: false,
       createdAt: { $gte: d, $lt: next },
     });
+    const count = calculateHeadcount(dayGuests);
     guestTrend.push({
       date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       guests: count,

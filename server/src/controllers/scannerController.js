@@ -186,12 +186,27 @@ exports.getLiveStats = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Not authorized for this event.' });
   }
 
-  const [total, scanned, confirmed, pending] = await Promise.all([
-    Guest.countDocuments({ event: eventId, isDeleted: false }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, scanStatus: 'scanned' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'confirmed' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, rsvpStatus: 'pending' }),
+  // ✅ Calculate HEADCOUNT (actual people) instead of just counting records
+  const { TICKET_CAPACITY } = require('../models/Guest');
+  
+  const [allGuests, scannedGuests, confirmedGuests, pendingGuests] = await Promise.all([
+    Guest.find({ event: eventId, isDeleted: false }),
+    Guest.find({ event: eventId, isDeleted: false, scanStatus: 'scanned' }),
+    Guest.find({ event: eventId, isDeleted: false, rsvpStatus: 'confirmed' }),
+    Guest.find({ event: eventId, isDeleted: false, rsvpStatus: 'pending' }),
   ]);
+
+  const calculateHeadcount = (guests) => {
+    return guests.reduce((sum, guest) => {
+      const capacity = TICKET_CAPACITY[guest.ticketType] || 1;
+      return sum + capacity;
+    }, 0);
+  };
+
+  const total = calculateHeadcount(allGuests);
+  const scanned = calculateHeadcount(scannedGuests);
+  const confirmed = calculateHeadcount(confirmedGuests);
+  const pending = calculateHeadcount(pendingGuests);
 
   res.json({
     success: true,

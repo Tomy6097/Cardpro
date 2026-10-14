@@ -632,16 +632,50 @@ exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
 exports.getInvitationStats = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
 
-  const [total, smsSent, whatsappSent, notSent, delivered, failed] = await Promise.all([
-    Guest.countDocuments({ event: eventId, isDeleted: false }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, messageChannel: 'sms' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, messageChannel: 'whatsapp' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, messageStatus: 'not_sent' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, messageStatus: 'delivered' }),
-    Guest.countDocuments({ event: eventId, isDeleted: false, messageStatus: 'failed' }),
-  ]);
+  // ✅ Calculate HEADCOUNT (actual people) instead of just counting records
+  const { TICKET_CAPACITY } = require('../models/Guest');
+  
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false });
+  
+  const calculateHeadcount = (guests) => {
+    return guests.reduce((sum, guest) => {
+      const capacity = TICKET_CAPACITY[guest.ticketType] || 1;
+      return sum + capacity;
+    }, 0);
+  };
 
-  res.json({ success: true, stats: { total, smsSent, whatsappSent, notSent, delivered, failed } });
+  const total = calculateHeadcount(allGuests);
+  
+  // Message stats - count RECORDS (because 1 guest = 1 message, regardless of ticket type)
+  const smsSent = allGuests.filter(g => g.messageChannel === 'sms').length;
+  const whatsappSent = allGuests.filter(g => g.messageChannel === 'whatsapp').length;
+  const notSent = allGuests.filter(g => g.messageStatus === 'not_sent').length;
+  const delivered = allGuests.filter(g => g.messageStatus === 'delivered').length;
+  const failed = allGuests.filter(g => g.messageStatus === 'failed').length;
+
+  // ✅ Also calculate RSVP headcounts
+  const confirmedGuests = allGuests.filter(g => g.rsvpStatus === 'confirmed');
+  const pendingGuests = allGuests.filter(g => g.rsvpStatus === 'pending');
+  const declinedGuests = allGuests.filter(g => g.rsvpStatus === 'declined');
+  
+  const confirmed = calculateHeadcount(confirmedGuests);
+  const pending = calculateHeadcount(pendingGuests);
+  const declined = calculateHeadcount(declinedGuests);
+
+  res.json({ 
+    success: true, 
+    stats: { 
+      total, 
+      confirmed,
+      pending,
+      declined,
+      smsSent, 
+      whatsappSent, 
+      notSent, 
+      delivered, 
+      failed 
+    } 
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────
