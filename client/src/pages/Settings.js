@@ -19,10 +19,20 @@ const Settings = () => {
   const [waTestLoading, setWaTestLoading] = useState(false);
   const [templateInfo, setTemplateInfo] = useState(null);
   const [templateLoading, setTemplateLoading] = useState(false);
+  
+  // ✅ NEW: WhatsApp Template Manager states
+  const [templateModal, setTemplateModal] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ name: '', contentSid: '', description: '' });
 
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsAPI.get().then(r => r.data),
+  });
+  
+  // ✅ NEW: Query for WhatsApp templates
+  const { data: templatesData, refetch: refetchTemplates } = useQuery({
+    queryKey: ['whatsapp-templates'],
+    queryFn: () => settingsAPI.getWhatsappTemplates().then(r => r.data),
   });
 
   const { data: scannersData, refetch: refetchScanners } = useQuery({
@@ -63,6 +73,36 @@ const Settings = () => {
     mutationFn: usersAPI.deleteScanner,
     onSuccess: () => { refetchScanners(); toast.success('Scanner deleted.'); },
     onError: (err) => toast.error(err.message),
+  });
+  
+  // ✅ NEW: WhatsApp Template mutations
+  const addTemplateMutation = useMutation({
+    mutationFn: (d) => settingsAPI.addWhatsappTemplate(d),
+    onSuccess: () => {
+      refetchTemplates();
+      toast.success('Template added successfully!');
+      setTemplateModal(false);
+      setTemplateForm({ name: '', contentSid: '', description: '' });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || err.message),
+  });
+
+  const selectTemplateMutation = useMutation({
+    mutationFn: (d) => settingsAPI.selectWhatsappTemplate(d),
+    onSuccess: () => {
+      refetchTemplates();
+      toast.success('Template activated successfully!');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || err.message),
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (contentSid) => settingsAPI.deleteWhatsappTemplate(contentSid),
+    onSuccess: () => {
+      refetchTemplates();
+      toast.success('Template deleted successfully!');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || err.message),
   });
 
   const handleSettingChange = (e) => setSettingsForm(p => ({ ...p, [e.target.name]: e.target.value }));
@@ -370,6 +410,191 @@ const Settings = () => {
             <Input label="API Secret" name="cloudinaryApiSecret" value={settingsForm.cloudinaryApiSecret || ''} onChange={handleSettingChange} type="password" />
             <Button variant="primary" size="sm" onClick={() => updateMutation.mutate(settingsForm)} loading={updateMutation.isPending}>Save</Button>
           </div>
+          
+          {/* ✅ NEW: WhatsApp Template Manager */}
+          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', border: '2px solid #25D36622', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366" stroke="none">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.5-5.24-1.373l-.375-.222-3.876.923.96-3.773-.244-.389A9.945 9.945 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                </svg>
+                <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 600, color: '#075E54', margin: 0 }}>
+                  WhatsApp Template Manager
+                </h3>
+              </div>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={() => setTemplateModal(true)}
+                style={{ background: '#25D366', borderColor: '#25D366' }}
+              >
+                + Add Template
+              </Button>
+            </div>
+            
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Manage multiple WhatsApp templates for your invitations. Switch between templates instantly without editing code.
+            </p>
+
+            {/* Templates List */}
+            {templatesData?.templates?.length === 0 ? (
+              <div style={{ 
+                background: 'var(--cream)', 
+                borderRadius: 'var(--radius)', 
+                padding: '32px', 
+                textAlign: 'center',
+                border: '1px dashed var(--border)'
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" style={{ margin: '0 auto 12px' }}>
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                  No templates added yet. Add your first WhatsApp template to get started.
+                </p>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={() => setTemplateModal(true)}
+                  style={{ background: '#25D366', borderColor: '#25D366' }}
+                >
+                  + Add Your First Template
+                </Button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {templatesData?.templates?.map((template) => {
+                  const isActive = template.contentSid === templatesData.selectedTemplateSid;
+                  return (
+                    <div
+                      key={template.contentSid}
+                      style={{
+                        background: isActive ? '#F0FDF4' : 'var(--white)',
+                        border: `2px solid ${isActive ? '#25D366' : 'var(--border-light)'}`,
+                        borderRadius: 'var(--radius)',
+                        padding: '16px',
+                        display: 'flex',
+                        alignItems: 'start',
+                        justifyContent: 'space-between',
+                        gap: '16px',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <h4 style={{ 
+                            margin: 0, 
+                            fontSize: '14px', 
+                            fontWeight: 600, 
+                            color: 'var(--primary-dark)',
+                            fontFamily: 'Poppins'
+                          }}>
+                            {template.name}
+                          </h4>
+                          {isActive && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              background: '#25D366',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ 
+                          margin: '0 0 8px', 
+                          fontSize: '12px', 
+                          color: 'var(--text-muted)',
+                          fontFamily: 'monospace',
+                          background: isActive ? '#DCFCE7' : 'var(--cream)',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          display: 'inline-block',
+                        }}>
+                          {template.contentSid}
+                        </p>
+                        {template.description && (
+                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {template.description}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        {!isActive && (
+                          <button
+                            onClick={() => selectTemplateMutation.mutate({ contentSid: template.contentSid })}
+                            disabled={selectTemplateMutation.isPending}
+                            style={{
+                              padding: '7px 14px',
+                              background: '#25D366',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: selectTemplateMutation.isPending ? 'not-allowed' : 'pointer',
+                              fontFamily: 'Inter',
+                              transition: 'all 0.2s',
+                              opacity: selectTemplateMutation.isPending ? 0.6 : 1,
+                            }}
+                          >
+                            {selectTemplateMutation.isPending ? 'Selecting...' : 'Select'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Delete template "${template.name}"?`)) {
+                              deleteTemplateMutation.mutate(template.contentSid);
+                            }
+                          }}
+                          disabled={deleteTemplateMutation.isPending}
+                          style={{
+                            padding: '7px 14px',
+                            background: 'var(--white)',
+                            color: 'var(--danger)',
+                            border: '1px solid var(--danger)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            cursor: deleteTemplateMutation.isPending ? 'not-allowed' : 'pointer',
+                            fontFamily: 'Inter',
+                            transition: 'all 0.2s',
+                            opacity: deleteTemplateMutation.isPending ? 0.6 : 1,
+                          }}
+                        >
+                          {deleteTemplateMutation.isPending ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Info Box */}
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '12px 14px', 
+              background: '#FFFBEB', 
+              borderRadius: 'var(--radius-sm)', 
+              border: '1px solid #FDE047',
+              fontSize: '12px',
+              color: '#78350F'
+            }}>
+              <strong>💡 Tip:</strong> Create templates in Twilio Console → Messaging → Content Templates. 
+              After Meta approval (1-3 days), copy the Content SID and add it here.
+            </div>
+          </div>
         </div>
       )}
 
@@ -442,6 +667,103 @@ const Settings = () => {
           </Button>
         </div>
       )}
+
+      {/* ✅ NEW: Template Modal */}
+      <Modal 
+        isOpen={templateModal} 
+        onClose={() => {
+          setTemplateModal(false);
+          setTemplateForm({ name: '', contentSid: '', description: '' });
+        }} 
+        title="Add WhatsApp Template" 
+        width="520px"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => {
+              setTemplateModal(false);
+              setTemplateForm({ name: '', contentSid: '', description: '' });
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              loading={addTemplateMutation.isPending}
+              onClick={() => addTemplateMutation.mutate(templateForm)}
+              disabled={!templateForm.name || !templateForm.contentSid}
+              style={{ background: '#25D366', borderColor: '#25D366' }}
+            >
+              Add Template
+            </Button>
+          </>
+        }
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Input 
+            label="Template Name" 
+            value={templateForm.name} 
+            onChange={e => setTemplateForm(p => ({ ...p, name: e.target.value }))} 
+            placeholder="e.g., Christmas Wedding Template"
+            required 
+          />
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0', fontStyle: 'italic' }}>
+            A friendly name to identify this template
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <Input 
+            label="Content SID" 
+            value={templateForm.contentSid} 
+            onChange={e => setTemplateForm(p => ({ ...p, contentSid: e.target.value }))} 
+            placeholder="e.g., HX1234567890abcdef"
+            required 
+          />
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0', fontStyle: 'italic' }}>
+            Get this from Twilio Console → Messaging → Content Templates
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+            Description <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+          </label>
+          <textarea
+            value={templateForm.description}
+            onChange={e => setTemplateForm(p => ({ ...p, description: e.target.value }))}
+            placeholder="e.g., Red and gold theme for December weddings"
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              fontSize: '14px',
+              fontFamily: 'Inter',
+              resize: 'vertical',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {/* Info box */}
+        <div style={{ 
+          background: '#FFFBEB', 
+          border: '1px solid #FDE047', 
+          borderRadius: 'var(--radius-sm)', 
+          padding: '12px 14px',
+          fontSize: '12px',
+          color: '#78350F'
+        }}>
+          <strong>💡 Quick Guide:</strong>
+          <ol style={{ margin: '8px 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
+            <li>Create template in Twilio Console</li>
+            <li>Submit for Meta approval (1-3 days)</li>
+            <li>Copy the Content SID (starts with HX)</li>
+            <li>Paste it here and add the template</li>
+          </ol>
+        </div>
+      </Modal>
 
       {/* Scanner Modal */}
       <Modal isOpen={scannerModal} onClose={() => setScannerModal(false)} title="Create Scanner Account" width="480px"
