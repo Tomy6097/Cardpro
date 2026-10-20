@@ -27,181 +27,6 @@ const ticketOptions = [
 const emptyForm = { guestName: '', phone: '', email: '', ticketType: 'Single', tableNumber: '', notes: '' };
 const emptyEditForm = { guestName: '', phone: '', email: '', ticketType: 'Single', tableNumber: '', notes: '' };
 
-// ─── WhatsApp Share Modal ──────────────────────────────────────────────────
-// Formats the saved template (from Invitations page localStorage) with guest
-// variables and opens wa.me — no API needed, just the native WhatsApp app.
-const WhatsAppShareModal = ({ guest, event, onClose }) => {
-  if (!guest) return null;
-
-  const eventId = event?._id || event?.id || '';
-
-  // Pull the WhatsApp template saved in Invitations page (same localStorage key)
-  const waKey = `cardpro_wa_template_${eventId}`;
-  const savedTemplate = localStorage.getItem(waKey) || '';
-
-  // Build a filled-in message by replacing every variable with actual guest data
-  const fillTemplate = (tmpl) => {
-    if (!tmpl) return '';
-    const venue    = event?.venue    || '';
-    const dressCode = event?.dressCode || event?.dress_code || '';
-    const slug     = event?.slug     || '';
-    const confirmUrl = slug && guest.verificationCode
-      ? `${window.location.origin}/event/${slug}?code=${guest.verificationCode}`
-      : '';
-    // Format event date nicely if available
-    let dateFmt = '';
-    if (event?.date) {
-      try {
-        dateFmt = new Date(event.date).toLocaleDateString('sw-TZ', {
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        });
-      } catch { dateFmt = event.date; }
-    }
-    return tmpl
-      .replace(/{guestName}/g,        guest.guestName   || '')
-      .replace(/{eventName}/g,        event?.name       || '')
-      .replace(/{date}/g,             dateFmt)
-      .replace(/{venue}/g,            venue)
-      .replace(/{dressCode}/g,        dressCode)
-      .replace(/{confirmUrl}/g,       confirmUrl)
-      .replace(/{verificationCode}/g, guest.verificationCode || '');
-  };
-
-  const [message, setMessage] = React.useState(() => fillTemplate(savedTemplate));
-
-  // Format phone for wa.me — strip leading 0, add 255 if needed
-  const formatPhone = (phone) => {
-    if (!phone) return '';
-    const clean = phone.replace(/\D/g, '');
-    if (clean.startsWith('255')) return clean;
-    if (clean.startsWith('0'))   return '255' + clean.slice(1);
-    return clean;
-  };
-
-  const handleShare = () => {
-    if (!guest.phone) { alert('Guest has no phone number.'); return; }
-    const phone = formatPhone(guest.phone);
-    const url   = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    onClose();
-  };
-
-  return ReactDOM.createPortal(
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,10,0,0.75)', backdropFilter: 'blur(6px)' }}
-      />
-
-      {/* Modal box */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', pointerEvents: 'none' }}>
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{ width: 'min(500px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px)', background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden', pointerEvents: 'all' }}
-        >
-          {/* Header */}
-          <div style={{ background: 'linear-gradient(135deg, #075E54, #128C7E)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {/* WhatsApp icon */}
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              <div>
-                <h3 style={{ fontFamily: 'Poppins', fontSize: '15px', fontWeight: 700, color: 'white', margin: 0 }}>
-                  WhatsApp — {guest.guestName}
-                </h3>
-                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', margin: '2px 0 0' }}>
-                  {guest.phone}
-                </p>
-              </div>
-            </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-
-          {/* Body */}
-          <div style={{ padding: '18px', flex: 1, overflowY: 'auto' }}>
-            {/* Info badge */}
-            <div style={{ display: 'flex', alignItems: 'start', gap: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius)', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: '#166534' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              <span>Message imejazwa kwa data ya guest. Unaweza kuhariri kabla ya kutuma. Ukibonyeza <strong>Share</strong>, WhatsApp itafunguliwa moja kwa moja.</span>
-            </div>
-
-            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              Message
-            </label>
-            <textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              rows={10}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                padding: '10px 12px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                fontSize: '13px',
-                fontFamily: 'Inter',
-                lineHeight: '1.6',
-                resize: 'vertical',
-                outline: 'none',
-                color: 'var(--primary-dark)',
-                background: 'var(--cream)',
-              }}
-            />
-
-            {/* Variables hint */}
-            <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-              <strong>Variables unaweza kutumia:</strong>{' '}
-              {['{guestName}','{eventName}','{date}','{venue}','{dressCode}','{confirmUrl}','{verificationCode}'].map(v => (
-                <code key={v} style={{ background: 'var(--cream-dark)', padding: '1px 5px', borderRadius: '3px', marginRight: '4px', marginBottom: '3px', display: 'inline-block', cursor: 'pointer' }}
-                  onClick={() => setMessage(m => m + v)}
-                  title="Click to append"
-                >{v}</code>
-              ))}
-            </div>
-
-            {!savedTemplate && (
-              <div style={{ marginTop: '10px', padding: '9px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 'var(--radius)', fontSize: '12px', color: '#92400E' }}>
-                ⚠️ Hakuna template iliyohifadhiwa. Nenda kwenye <strong>Invitation Center → WhatsApp → Custom Text</strong> uandike template yako, itahifadhiwa kiotomatiki.
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '10px', justifyContent: 'flex-end', flexShrink: 0, background: 'var(--white)' }}>
-            <button onClick={onClose} style={{ padding: '9px 18px', background: 'var(--cream-dark)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '13px', cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'Inter' }}>
-              Cancel
-            </button>
-            <button
-              onClick={handleShare}
-              disabled={!message.trim()}
-              style={{
-                padding: '9px 22px',
-                background: message.trim() ? '#25D366' : '#A7F3D0',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'var(--radius)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: message.trim() ? 'pointer' : 'not-allowed',
-                fontFamily: 'Inter',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              Share via WhatsApp
-            </button>
-          </div>
-        </div>
-      </div>
-    </>,
-    document.body
-  );
-};
-// ──────────────────────────────────────────────────────────────────────────────
-
 // Card Preview Popup Component
 const CardPreviewModal = ({ guest, onClose }) => {
   if (!guest) return null;
@@ -315,7 +140,6 @@ const GuestList = () => {
   const [editGuest, setEditGuest] = useState(null);
   const [scanHistoryGuest, setScanHistoryGuest] = useState(null);
   const [formErrors, setFormErrors] = useState({});
-  const [waShareGuest, setWaShareGuest] = useState(null); // WhatsApp share modal
 
   const { data: eventData } = useQuery({
     queryKey: ['event', eventId],
@@ -700,18 +524,6 @@ const GuestList = () => {
                         Edit
                       </button>
 
-                      {/* WhatsApp direct share — no API, opens wa.me */}
-                      {g.phone && (
-                        <button
-                          onClick={() => setWaShareGuest(g)}
-                          style={{ padding: '4px 10px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: '#15803D', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          title="Send WhatsApp (no API)"
-                        >
-                          <svg viewBox="0 0 24 24" width="11" height="11" fill="#15803D"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                          WA
-                        </button>
-                      )}
-
                       {/* Scan history button */}
                       {(g.scanHistory?.length > 0 || g.scanStatus === 'scanned') && (
                         <button
@@ -901,13 +713,6 @@ const GuestList = () => {
 
       {/* Card Preview Popup */}
       <CardPreviewModal guest={previewGuest} onClose={() => setPreviewGuest(null)} />
-
-      {/* WhatsApp Direct Share Modal */}
-      <WhatsAppShareModal
-        guest={waShareGuest}
-        event={event}
-        onClose={() => setWaShareGuest(null)}
-      />
     </div>
   );
 };
