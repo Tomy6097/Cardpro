@@ -1,0 +1,818 @@
+const axios = require('axios');
+const twilio = require('twilio');
+const Guest = require('../models/Guest');
+const Event = require('../models/Event');
+const Settings = require('../models/Settings');
+const { logActivity } = require('../utils/activityLogger');
+const { asyncHandler } = require('../middleware/errorHandler');
+
+// Month names in Swahili
+const SW_MONTHS = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
+const SW_DAYS   = ['Jumapili','Jumatatu','Jumanne','Jumatano','Alhamisi','Ijumaa','Jumamosi'];
+
+// ✅ Parse Twilio/WhatsApp errors into user-friendly messages
+const parseWhatsAppError = (error) => {
+  const errorCode = error.code || error.response?.data?.code || error.response?.status;
+  const errorMsg = error.message || error.response?.data?.message || 'Unknown error';
+
+  // Common Twilio WhatsApp error codes
+  const errorMap = {
+    // Authentication & Configuration
+    20003: {
+      message: '🔐 Twilio credentials invalid. Check your Account SID and Auth Token.',
+      suggestion: 'Go to Settings → Messaging and verify your Twilio credentials.',
+      statusCode: 401
+    },
+    20404: {
+      message: '❌ WhatsApp template not found or not approved yet.',
+      suggestion: 'Wait for template approval (1-3 days) or use Custom Text mode instead.',
+      statusCode: 404
+    },
+    
+    // WhatsApp-specific
+    63016: {
+      message: '📱 Recipient has not joined WhatsApp Sandbox or WhatsApp Business API not enabled.',
+      suggestion: 'Either: 1) Wait for WhatsApp Business approval, or 2) Ask guest to send "join <code>" to sandbox number.',
+      statusCode: 400
+    },
+    63032: {
+      message: '⚠️ Template not approved or variables mismatch.',
+      suggestion: 'Check template approval status in Twilio Console. Template may still be under review.',
+      statusCode: 400
+    },
+    63033: {
+      message: '⏰ Message outside customer service window. Template required.',
+      suggestion: 'Use Template Mode or wait 24 hours after last customer message.',
+      statusCode: 400
+    },
+    
+    // Phone number issues
+    21211: {
+      message: '📞 Invalid phone number format.',
+      suggestion: `Check guest phone number: ${error.response?.data?.more_info || 'Must be in format +255XXXXXXXXX'}`,
+      statusCode: 400
+    },
+    21608: {
+      message: '❌ This phone number is not enabled for WhatsApp or does not have WhatsApp.',
+      suggestion: 'Use SMS instead, or verify the guest has WhatsApp installed.',
+      statusCode: 400
+    },
+    21610: {
+      message: '🚫 Message blocked by WhatsApp. Recipient may have blocked your number.',
+      suggestion: 'Guest may have blocked sender. Use SMS or contact guest directly.',
+      statusCode: 400
+    },
+    
+    // Balance & Limits
+    20429: {
+      message: '💰 Insufficient Twilio balance.',
+      suggestion: 'Top up your Twilio account at console.twilio.com/billing',
+      statusCode: 402
+    },
+    20003: {
+      message: '⚠️ Account suspended or balance insufficient.',
+      suggestion: 'Check Twilio account status and balance.',
+      statusCode: 403
+    },
+    
+    // Rate limiting
+    429: {
+      message: '⏱️ Too many messages sent. Rate limit exceeded.',
+      suggestion: 'Wait a few minutes and try again. System sends 1 message per 1.2 seconds.',
+      statusCode: 429
+    },
+    
+    // Network/Timeout
+    'ETIMEDOUT': {
+      message: '⏳ Request timeout. Network issue or Twilio service slow.',
+      suggestion: 'Check internet connection and try again in a few minutes.',
+      statusCode: 408
+    },
+    'ENOTFOUND': {
+      message: '🌐 Cannot connect to Twilio servers.',
+      suggestion: 'Check internet connection. Twilio may be down (rare).',
+      statusCode: 503
+    },
+  };
+
+  // Check if we have a known error
+  const knownError = errorMap[errorCode] || errorMap[error.code];
+  
+  if (knownError) {
+    return knownError;
+  }
+
+  // Default error for unknown issues
+  return {
+    message: `❌ WhatsApp send failed: ${errorMsg}`,
+    suggestion: `Error code: ${errorCode || 'UNKNOWN'}. Check Twilio Console logs for details: console.twilio.com/monitor/logs`,
+    statusCode: 500
+  };
+};
+
+const formatDate = (date, lang = 'sw') => {
+  const d = new Date(date);
+  if (lang === 'en') {
+    return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  }
+  // Kiswahili format: Jumatatu, 25 Desemba 2026
+  const dayName   = SW_DAYS[d.getDay()];
+  const day       = d.getDate();
+  const month     = SW_MONTHS[d.getMonth()];
+  const year      = d.getFullYear();
+  return `${dayName}, ${day} ${month} ${year}`;
+};
+
+// Detect language from template content
+const detectLang = (template) => {
+  const swWords = ['Mpendwa','Umealikwa','Tarehe','Mahali','Tafadhali','Karibu','thibitisha','Saa','Dress Code'];
+  return swWords.some(w => template.includes(w)) ? 'sw' : 'en';
+};
+
+const buildConfirmUrl = (eventSlug, guestVerificationCode) => {
+  const baseUrl = process.env.CLIENT_URL || 'https://cardpro-app.onrender.com';
+  return `${baseUrl}/event/${eventSlug}?code=${guestVerificationCode}`;
+};
+
+const interpolateTemplate = (template, guest, event) => {
+  const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
+  const lang = detectLang(template);
+  return template
+    .replace(/{guestName}/g, guest.guestName)
+    .replace(/{eventName}/g, event.name)
+    .replace(/{date}/g, formatDate(event.date, lang))
+    .replace(/{time}/g, event.time || '')
+    .replace(/{venue}/g, event.venue)
+    .replace(/{dressCode}/g, event.dressCode || '')
+    .replace(/{confirmUrl}/g, confirmUrl)
+    .replace(/{verificationCode}/g, guest.verificationCode);
+};
+
+// --- SMS via Beem Africa ---
+const sendBeemSMS = async (phone, message, settings) => {
+  const apiKey = settings?.beemApiKey || process.env.BEEM_API_KEY;
+  const secretKey = settings?.beemSecretKey || process.env.BEEM_SECRET_KEY;
+  const senderId = settings?.beemSenderId || process.env.BEEM_SENDER_ID || 'CARDPRO';
+
+  if (!apiKey || !secretKey) {
+    throw new Error('Beem Africa credentials not configured. Set beemApiKey and beemSecretKey in Settings.');
+  }
+
+  // Ensure phone has no + prefix for Beem
+  const cleanPhone = phone.replace(/^\+/, '');
+
+  const recipients = [{ recipient_id: 1, dest_addr: cleanPhone }];
+
+  try {
+    const response = await axios.post(
+      'https://apisms.beem.africa/v1/send',
+      {
+        source_addr: senderId,
+        schedule_time: '',
+        encoding: 0,
+        message,
+        recipients,
+      },
+      {
+        auth: { username: apiKey, password: secretKey },
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      }
+    );
+
+    // Beem returns success_count in response
+    const data = response.data;
+    if (data?.successful === 0 || (data?.data && data.data[0]?.request_id === null)) {
+      throw new Error(`Beem rejected message: ${JSON.stringify(data)}`);
+    }
+
+    return data;
+  } catch (err) {
+    if (err.response) {
+      // Beem returned an error response
+      throw new Error(`Beem API error (${err.response.status}): ${JSON.stringify(err.response.data)}`);
+    }
+    throw err;
+  }
+};
+
+// --- WhatsApp via Twilio (plain body) ---
+const sendTwilioWhatsApp = async (phone, message, settings) => {
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken = settings?.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN;
+  const from = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured.');
+  }
+
+  const client = twilio(accountSid, authToken);
+
+  // If Content SID is set — use template (recommended for WhatsApp Business)
+  if (contentSid) {
+    // Extract values from the interpolated message is not possible in reverse
+    // so we pass message as plain body fallback — but for template we need guest/event data
+    // This path is used by sendWhatsAppTemplate() below
+    return client.messages.create({ from, to: `whatsapp:+${phone}`, body: message });
+  }
+
+  return client.messages.create({ from, to: `whatsapp:+${phone}`, body: message });
+};
+
+// --- WhatsApp via Twilio Content Template (with real guest/event data) ---
+const sendTwilioWhatsAppWithTemplate = async (phone, guest, event, settings) => {
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+  
+  // ✅ Priority: Settings selected template → .env fallback
+  const contentSid = settings?.selectedWhatsappTemplateSid || process.env.TWILIO_CONTENT_SID;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
+  }
+  if (!from) {
+    throw new Error('TWILIO_WHATSAPP_FROM not configured.');
+  }
+  if (!contentSid) {
+    throw new Error('No WhatsApp template selected. Please select a template in Settings or set TWILIO_CONTENT_SID in .env');
+  }
+
+  const client = twilio(accountSid, authToken);
+  const confirmUrl = buildConfirmUrl(event.slug, guest.verificationCode);
+
+  // Normalize phone and from
+  const cleanPhone = phone.replace(/\D/g, '');
+  const toNumber   = `whatsapp:+${cleanPhone}`;
+  const rawFrom    = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+  const fromNumber = rawFrom.startsWith('whatsapp:')
+    ? rawFrom.replace(/\s/g, '')
+    : `whatsapp:+${rawFrom.replace(/\D/g, '')}`;
+
+  // ✅ WhatsApp Template Variables Mapping
+  // IMPORTANT: Twilio templates number variables differently:
+  // - HEADER image is NOT counted in body variables
+  // - Body variables start from {{1}}
+  // - Button URL is separate variable
+  //
+  // Template Structure in Twilio:
+  // HEADER: {{1}} = Card Image URL (not sent in contentVariables - handled by mediaUrl)
+  // BODY:   {{1}} = Guest Name
+  //         {{2}} = Client Name (Bride & Groom)
+  //         {{3}} = Date & Time
+  //         {{4}} = Venue
+  //         {{5}} = Dress Code
+  //         {{6}} = Verification Code
+  // BUTTON: {{7}} = Confirmation URL
+  const contentVariables = {
+    '1': guest.guestName,
+    '2': event.clientName,
+    '3': formatDate(event.date, 'sw') + (event.time ? ` · ${event.time}` : ''),
+    '4': event.venue,
+    '5': event.dressCode || 'Smart Casual',
+    '6': guest.verificationCode,
+    '7': confirmUrl,
+  };
+
+  // Note: Header image is sent separately if supported by Twilio SDK
+  // For now, image URL is: guest.cardUrl || event.cardTemplate?.url || event.coverImage?.url
+
+  const cvString = JSON.stringify(contentVariables);
+
+  // Use Twilio REST API directly via axios — avoids SDK contentVariables serialization issues
+  const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const params = new URLSearchParams();
+  params.append('From', fromNumber);
+  params.append('To', toNumber);
+  params.append('ContentSid', contentSid);
+  params.append('ContentVariables', cvString);
+
+  return axios.post(twilioUrl, params, {
+    auth: { username: accountSid, password: authToken },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 30000,
+  });
+};
+
+// --- WhatsApp via Twilio Content Template ---
+const sendTwilioWhatsAppTemplate = async ({ to, contentSid, contentVariables, settings }) => {
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const from       = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM;
+
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings or .env');
+  }
+  if (!from) {
+    throw new Error('TWILIO_WHATSAPP_FROM not configured. Set it in Settings or .env');
+  }
+  if (!contentSid) {
+    throw new Error('No Content SID provided.');
+  }
+
+  const client = twilio(accountSid, authToken);
+
+  const params = {
+    from,
+    to,
+    contentSid,
+  };
+
+  // Only include contentVariables if there are any
+  if (contentVariables && Object.keys(contentVariables).length > 0) {
+    params.contentVariables = JSON.stringify(contentVariables);
+  }
+
+  return client.messages.create(params);
+};
+
+exports.sendSMS = asyncHandler(async (req, res) => {
+  const { guestId, customMessage } = req.body;
+
+  const guest = await Guest.findById(guestId).populate('event');
+  if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
+
+  const settings = await Settings.findOne();
+  const template = customMessage || settings?.defaultSmsTemplate || 'Dear {guestName}, You are invited to {eventName} on {date} at {venue}. Confirm: {confirmUrl}';
+
+  const message = interpolateTemplate(template, guest, guest.event);
+
+  await sendBeemSMS(guest.phone, message, settings);
+
+  guest.messageStatus = 'sms_sent';
+  guest.messageChannel = 'sms';
+  guest.messageSentAt = new Date();
+  await guest.save({ validateBeforeSave: false });
+
+  await logActivity({
+    event: guest.event._id,
+    action: 'send_sms',
+    description: `SMS sent to guest "${guest.guestName}"`,
+    req,
+  });
+
+  res.json({ success: true, message: 'SMS sent successfully.' });
+});
+
+exports.sendWhatsApp = asyncHandler(async (req, res) => {
+  const { guestId, customMessage, useTemplate } = req.body;
+
+  const guest = await Guest.findById(guestId).populate('event');
+  if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
+
+  const settings = await Settings.findOne();
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+
+  // Normalize FROM — always ensure it has whatsapp: prefix and no spaces
+  const rawFrom = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+  const from = rawFrom.startsWith('whatsapp:')
+    ? rawFrom.replace(/\s/g, '')
+    : `whatsapp:+${rawFrom.replace(/\D/g, '')}`;
+
+  // Normalize phone — digits only, then add whatsapp: prefix
+  const cleanPhone = guest.phone.replace(/\D/g, '');
+  const toNumber   = `whatsapp:+${cleanPhone}`;
+
+  // ✅ SENDING MODE LOGIC:
+  // 1. If customMessage provided → ALWAYS use plain text (override template)
+  // 2. If useTemplate=false explicitly → use plain text
+  // 3. If contentSid exists AND no customMessage → use template (default)
+  // 4. Otherwise → use plain text with default template
+  const shouldUseTemplate = !customMessage && useTemplate !== false && !!contentSid;
+
+  console.log('=== WhatsApp Debug ===');
+  console.log('Guest:', guest.guestName);
+  console.log('Raw phone:', guest.phone);
+  console.log('Clean phone:', cleanPhone);
+  console.log('To:', toNumber);
+  console.log('From:', from);
+  console.log('ContentSid:', contentSid);
+  console.log('customMessage:', JSON.stringify(customMessage));
+  console.log('useTemplate param:', useTemplate);
+  console.log('Will use template:', shouldUseTemplate);
+  console.log('AccountSid set:', !!accountSid);
+  console.log('AuthToken set:', !!authToken);
+  console.log('=====================');
+
+  if (!accountSid || !authToken) {
+    return res.status(400).json({ success: false, message: 'Twilio credentials not configured. Go to Settings → Messaging and save your Twilio credentials.' });
+  }
+  if (!from) {
+    return res.status(400).json({ success: false, message: 'TWILIO_WHATSAPP_FROM not configured.' });
+  }
+
+  const client = twilio(accountSid, authToken);
+
+  try {
+    // MODE 1: Use Twilio Content Template (with image + button)
+    if (shouldUseTemplate) {
+      const confirmUrl = buildConfirmUrl(guest.event.slug, guest.verificationCode);
+      
+      // ✅ WhatsApp Template Variables (Twilio Format)
+      // HEADER: Image variable handled separately
+      // BODY:   {{1}} to {{6}}
+      // BUTTON: {{7}}
+      const contentVariables = {
+        '1': guest.guestName,
+        '2': guest.event.clientName,
+        '3': formatDate(guest.event.date, 'sw') + (guest.event.time ? ` · ${guest.event.time}` : ''),
+        '4': guest.event.venue,
+        '5': guest.event.dressCode || 'Smart Casual',
+        '6': guest.verificationCode,
+        '7': confirmUrl,
+      };
+
+      const cvString = JSON.stringify(contentVariables);
+      console.log('=== sendWhatsApp DEBUG ===');
+      console.log('Guest:', guest.guestName, '| Phone:', guest.phone);
+      console.log('Client Name:', guest.event.clientName);
+      console.log('Card Image:', guest.cardUrl || guest.event.cardTemplate?.url || guest.event.coverImage?.url);
+      console.log('From:', from, '| To:', toNumber);
+      console.log('ContentSid:', contentSid);
+      console.log('ContentVariables:', cvString);
+      console.log('=========================');
+
+      // Use Twilio REST API directly via axios
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+      const params = new URLSearchParams();
+      params.append('From', from);
+      params.append('To', toNumber);
+      params.append('ContentSid', contentSid);
+      params.append('ContentVariables', cvString);
+
+      const response = await axios.post(twilioUrl, params, {
+        auth: { username: accountSid, password: authToken },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 30000,
+      });
+
+      console.log('Twilio SID:', response.data?.sid, '| Status:', response.data?.status);
+      console.log('Body sent:', response.data?.body?.substring(0, 100));
+    } else {
+      // MODE 2: Use Plain Text Message (no template, no approval needed)
+      const template = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*\nDate: {date}\nVenue: {venue}\nConfirm: {confirmUrl}';
+      const message  = interpolateTemplate(template, guest, guest.event);
+      
+      const result = await client.messages.create({ from, to: toNumber, body: message });
+      
+      // Log Twilio message SID for tracking
+      console.log('Twilio Message SID:', result.sid, 'Status:', result.status);
+      
+      // ⚠️ IMPORTANT: Twilio returns "queued" or "accepted" immediately
+      // Actual delivery happens later! Check Twilio Console for final status.
+      if (result.status === 'failed' || result.status === 'undelivered') {
+        throw new Error(`Message ${result.status}: ${result.errorMessage || 'Unknown error'}`);
+      }
+    }
+
+    // ✅ SUCCESS: Update guest record
+    guest.messageStatus = 'whatsapp_sent';
+    guest.messageChannel = 'whatsapp';
+    guest.messageSentAt = new Date();
+    await guest.save({ validateBeforeSave: false });
+
+    await logActivity({
+      event: guest.event._id,
+      action: 'send_whatsapp',
+      description: `WhatsApp sent to guest "${guest.guestName}" ${shouldUseTemplate ? '(template)' : '(plain text)'}`,
+      req,
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'WhatsApp message sent successfully.',
+      mode: shouldUseTemplate ? 'template' : 'plain_text',
+      warning: shouldUseTemplate ? null : 'Plain text WhatsApp requires WhatsApp Business API approval. Message is queued but may fail if API not approved yet. Check Twilio Console logs in 1-2 minutes for confirmation.'
+    });
+
+  } catch (error) {
+    // ✅ IMPROVED ERROR HANDLING: Parse Twilio errors and return user-friendly messages
+    console.error('=== WhatsApp Send Error ===');
+    console.error('Error:', error.message);
+    console.error('Code:', error.code);
+    console.error('Status:', error.response?.status);
+    console.error('Data:', error.response?.data);
+    console.error('==========================');
+
+    // Update guest status to failed
+    guest.messageStatus = 'failed';
+    await guest.save({ validateBeforeSave: false });
+
+    await logActivity({
+      event: guest.event._id,
+      action: 'send_whatsapp_failed',
+      description: `WhatsApp FAILED for "${guest.guestName}": ${error.message}`,
+      metadata: { errorCode: error.code, errorMessage: error.message },
+      req,
+    });
+
+    // Parse and return user-friendly error messages
+    const friendlyError = parseWhatsAppError(error);
+    return res.status(friendlyError.statusCode).json({ 
+      success: false, 
+      message: friendlyError.message,
+      errorCode: error.code || 'UNKNOWN',
+      suggestion: friendlyError.suggestion
+    });
+  }
+});
+
+exports.sendBulkSMS = asyncHandler(async (req, res) => {
+  const { eventId, customMessage, filter = {} } = req.body;
+
+  const event = await Event.findById(eventId);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+  const settings = await Settings.findOne();
+  const template = customMessage || settings?.defaultSmsTemplate || 'Dear {guestName}, You are invited to {eventName}. Confirm: {confirmUrl}';
+
+  const guestFilter = { event: eventId, isDeleted: false };
+  if (filter.rsvpStatus) guestFilter.rsvpStatus = filter.rsvpStatus;
+  if (filter.notSent) guestFilter.messageStatus = 'not_sent';
+
+  const guests = await Guest.find(guestFilter);
+
+  const results = { sent: 0, failed: 0, errors: [] };
+
+  for (const guest of guests) {
+    try {
+      const message = interpolateTemplate(template, guest, event);
+      await sendBeemSMS(guest.phone, message, settings);
+      guest.messageStatus = 'sms_sent';
+      guest.messageChannel = 'sms';
+      guest.messageSentAt = new Date();
+      await guest.save({ validateBeforeSave: false });
+      results.sent++;
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ guest: guest.guestName, error: err.message });
+    }
+  }
+
+  await logActivity({
+    event: eventId,
+    action: 'send_bulk_sms',
+    description: `Bulk SMS: ${results.sent} sent, ${results.failed} failed`,
+    metadata: results,
+    req,
+  });
+
+  res.json({ success: true, ...results });
+});
+
+exports.sendBulkWhatsApp = asyncHandler(async (req, res) => {
+  const { eventId, customMessage, filter = {}, useTemplate } = req.body;
+
+  const event = await Event.findById(eventId);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+  const settings = await Settings.findOne();
+  const contentSid = process.env.TWILIO_CONTENT_SID;
+
+  // ✅ Determine sending mode (same logic as single send)
+  const shouldUseTemplate = !customMessage && useTemplate !== false && !!contentSid;
+
+  const guestFilter = { event: eventId, isDeleted: false };
+  if (filter.rsvpStatus) guestFilter.rsvpStatus = filter.rsvpStatus;
+  if (filter.notSent) guestFilter.messageStatus = 'not_sent';
+
+  const guests = await Guest.find(guestFilter);
+  const results = { sent: 0, failed: 0, errors: [] };
+
+  for (const guest of guests) {
+    try {
+      // MODE 1: Template (with image + button) OR MODE 2: Plain text
+      if (shouldUseTemplate) {
+        await sendTwilioWhatsAppWithTemplate(guest.phone, guest, event, settings);
+      } else {
+        const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+        const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+        const rawFrom    = settings?.twilioWhatsappFrom || process.env.TWILIO_WHATSAPP_FROM || '';
+        const from       = rawFrom.startsWith('whatsapp:') ? rawFrom.replace(/\s/g,'') : `whatsapp:+${rawFrom.replace(/\D/g,'')}`;
+        const template   = customMessage || settings?.defaultWhatsappTemplate || 'Dear {guestName}, You are invited to *{eventName}*. Confirm: {confirmUrl}';
+        const message    = interpolateTemplate(template, guest, event);
+        const cleanPhone = guest.phone.replace(/\D/g, '');
+        const client     = twilio(accountSid, authToken);
+        await client.messages.create({ from, to: `whatsapp:+${cleanPhone}`, body: message });
+      }
+      guest.messageStatus = 'whatsapp_sent';
+      guest.messageChannel = 'whatsapp';
+      guest.messageSentAt = new Date();
+      await guest.save({ validateBeforeSave: false });
+      results.sent++;
+
+      // Delay 1.2s between messages to avoid Twilio rate limits
+      if (results.sent < guests.length) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ guest: guest.guestName, error: err.message });
+    }
+  }
+
+  await logActivity({
+    event: eventId,
+    action: 'send_bulk_whatsapp',
+    description: `Bulk WhatsApp (${shouldUseTemplate ? 'template' : 'plain text'}): ${results.sent} sent, ${results.failed} failed`,
+    metadata: results,
+    req,
+  });
+
+  res.json({ 
+    success: true, 
+    mode: shouldUseTemplate ? 'template' : 'plain_text',
+    ...results 
+  });
+});
+
+exports.getInvitationStats = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+
+  // ✅ Calculate HEADCOUNT (actual people) instead of just counting records
+  const { TICKET_CAPACITY } = require('../models/Guest');
+  
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false });
+  
+  const calculateHeadcount = (guests) => {
+    return guests.reduce((sum, guest) => {
+      const capacity = TICKET_CAPACITY[guest.ticketType] || 1;
+      return sum + capacity;
+    }, 0);
+  };
+
+  const total = calculateHeadcount(allGuests);
+  
+  // Message stats - count RECORDS (because 1 guest = 1 message, regardless of ticket type)
+  const smsSent = allGuests.filter(g => g.messageChannel === 'sms').length;
+  const whatsappSent = allGuests.filter(g => g.messageChannel === 'whatsapp').length;
+  const notSent = allGuests.filter(g => g.messageStatus === 'not_sent').length;
+  const delivered = allGuests.filter(g => g.messageStatus === 'delivered').length;
+  const failed = allGuests.filter(g => g.messageStatus === 'failed').length;
+
+  // ✅ Also calculate RSVP headcounts
+  const confirmedGuests = allGuests.filter(g => g.rsvpStatus === 'confirmed');
+  const pendingGuests = allGuests.filter(g => g.rsvpStatus === 'pending');
+  const declinedGuests = allGuests.filter(g => g.rsvpStatus === 'declined');
+  
+  const confirmed = calculateHeadcount(confirmedGuests);
+  const pending = calculateHeadcount(pendingGuests);
+  const declined = calculateHeadcount(declinedGuests);
+
+  res.json({ 
+    success: true, 
+    stats: { 
+      total, 
+      confirmed,
+      pending,
+      declined,
+      smsSent, 
+      whatsappSent, 
+      notSent, 
+      delivered, 
+      failed 
+    } 
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// INSPECT TWILIO TEMPLATE — fetch variable structure from Twilio
+// ─────────────────────────────────────────────────────────────────
+exports.inspectTemplate = asyncHandler(async (req, res) => {
+  const settings = await Settings.findOne();
+  const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = settings?.twilioAuthToken  || process.env.TWILIO_AUTH_TOKEN;
+  const contentSid = process.env.TWILIO_CONTENT_SID || 'HX9e7d3b8a1f973c95c208541772e9d9a9';
+
+  if (!accountSid || !authToken) {
+    return res.status(400).json({ success: false, message: 'Twilio credentials not configured.' });
+  }
+
+  try {
+    const client = twilio(accountSid, authToken);
+    const content = await client.content.v1.contents(contentSid).fetch();
+    res.json({
+      success: true,
+      template: {
+        sid: content.sid,
+        friendlyName: content.friendlyName,
+        language: content.language,
+        types: content.types,
+        variables: content.variables || {},
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch template: ${err.message}`,
+      code: err.code || null,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// TEST WHATSAPP — sandbox proof-of-concept
+// ─────────────────────────────────────────────────────────────────
+exports.testWhatsApp = asyncHandler(async (req, res) => {
+  const settings = await Settings.findOne();
+
+  const contentSid = process.env.TWILIO_CONTENT_SID || 'HX9e7d3b8a1f973c95c208541772e9d9a9';
+  const testTo     = process.env.TWILIO_TEST_TO;
+
+  if (!testTo) {
+    return res.status(400).json({
+      success: false,
+      message: 'TWILIO_TEST_TO not set in .env — add: TWILIO_TEST_TO=whatsapp:+255XXXXXXXXX',
+    });
+  }
+
+  // ✅ WhatsApp Template Variables for Testing
+  // HEADER: Image (handled separately by Twilio)
+  // BODY:   {{1}} to {{6}}
+  // BUTTON: {{7}}
+  const testData = {
+    cardImageUrl:     req.body.cardImageUrl     || 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+    guestName:        req.body.guestName        || 'James',
+    clientName:       req.body.clientName       || 'James & Anna',
+    dateTime:         req.body.dateTime         || 'Jumamosi, 22 Desemba 2026 · Saa 3:00 PM',
+    venue:            req.body.venue            || 'Golden Tulip Dar es Salaam',
+    dressCode:        req.body.dressCode        || 'White and Black',
+    verificationCode: req.body.verificationCode || 'CP7821',
+    confirmUrl:       req.body.confirmUrl       || 'https://cardpro-app.onrender.com/event/test?code=CP7821',
+  };
+
+  const contentVariables = {
+    '1': testData.guestName,
+    '2': testData.clientName,
+    '3': testData.dateTime,
+    '4': testData.venue,
+    '5': testData.dressCode,
+    '6': testData.verificationCode,
+    '7': testData.confirmUrl,
+  };
+
+  let messageSid, status, errorMsg, twilioCode;
+
+  try {
+    const result = await sendTwilioWhatsAppTemplate({
+      to: testTo,
+      contentSid,
+      contentVariables,
+      settings,
+    });
+
+    messageSid = result.sid;
+    status = result.status;
+
+    // Log success (no credentials logged)
+    await logActivity({
+      action: 'test_whatsapp',
+      description: `WhatsApp test sent to ${testTo.replace(/\d{6}$/, '******')} — SID: ${messageSid} — Status: ${status}`,
+    });
+
+    res.json({
+      success: true,
+      message: 'WhatsApp invitation sent successfully via Twilio Sandbox.',
+      messageSid,
+      status,
+      sentTo: testTo.replace(/\d{6}$/, '******'), // mask last 6 digits
+      contentSid,
+      testData,
+    });
+
+  } catch (err) {
+    // Safe error — parse with our error handler
+    const friendlyError = parseWhatsAppError(err);
+    
+    twilioCode = err.code || err.response?.data?.code;
+    errorMsg = friendlyError.message;
+
+    await logActivity({
+      action: 'test_whatsapp_failed',
+      description: `WhatsApp test FAILED — Code: ${twilioCode} — ${errorMsg}`,
+    });
+
+    res.status(friendlyError.statusCode).json({
+      success: false,
+      message: errorMsg,
+      twilioCode,
+      suggestion: friendlyError.suggestion,
+      troubleshoot: 'Check if you joined sandbox: Send "join <code>" to +1 415 523 8886',
+    });
+  }
+});
+
+// Helper: human-readable troubleshooting hints for common Twilio errors
+const getTroubleshootHint = (code, message) => {
+  if (code === 20003) return 'Authentication failed. Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings.';
+  if (code === 20404) return 'Content SID not found. Verify TWILIO_CONTENT_SID is correct.';
+  if (code === 63016) return 'The recipient has not joined the WhatsApp Sandbox. Ask them to send "join <sandbox-word>" to +14155238886.';
+  if (code === 63032) return 'Template not approved or variables mismatch. Check the template variables in Twilio Console.';
+  if (code === 21211) return 'Invalid "To" phone number format. TWILIO_TEST_TO must be: whatsapp:+255XXXXXXXXX';
+  if (code === 21608) return 'The number is not enabled for WhatsApp. Make sure the recipient joined the sandbox.';
+  if (!code && message?.includes('credentials')) return 'Twilio credentials are empty. Fill TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in Settings.';
+  return 'Check Twilio Console logs at console.twilio.com for details.';
+};

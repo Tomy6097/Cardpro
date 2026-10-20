@@ -1,0 +1,357 @@
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const Guest = require('../models/Guest');
+const Event = require('../models/Event');
+const { generateQRCodeBuffer } = require('../utils/qrGenerator');
+const { uploadToCloudinary } = require('../utils/cloudinary');
+const { logActivity } = require('../utils/activityLogger');
+const { asyncHandler } = require('../middleware/errorHandler');
+const axios = require('axios');
+
+// In-memory progress store: { eventId: { total, done, failed, status } }
+const cardGenProgress = {};
+
+exports.getCardProgress = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const progress = cardGenProgress[eventId];
+  if (!progress) {
+    return res.json({ success: true, status: 'idle', total: 0, done: 0, failed: 0, pct: 0 });
+  }
+  res.json({
+    success: true,
+    ...progress,
+    pct: progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0,
+  });
+});
+
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#FFFFFF');
+  return result ? {
+    r: parseInt(result[1], 16) / 255,
+    g: parseInt(result[2], 16) / 255,
+    b: parseInt(result[3], 16) / 255,
+  } : { r: 1, g: 1, b: 1 };
+};
+
+const fetchBuffer = async (url) => {
+  const response = await axios.get(url, {
+    responseType: 'arraybuffer',
+    timeout: 30000,
+  });
+  return Buffer.from(response.data);
+};
+
+exports.generateCard = asyncHandler(async (req, res) => {
+  const guest = await Guest.findById(req.params.id).populate('event');
+  if (!guest) return res.status(404).json({ success: false, message: 'Guest not found.' });
+
+  const event = guest.event;
+  if (!event.cardTemplate?.url) {
+    return res.status(400).json({ success: false, message: 'No card template uploaded for this event.' });
+  }
+
+  // Ensure QR token exists
+  if (!guest.qrToken) {
+    const { generateQRToken } = require('../utils/qrGenerator');
+    guest.qrToken = generateQRToken(guest._id.toString(), event._id.toString(), guest.ticketType);
+    await guest.save({ validateBeforeSave: false });
+  }
+
+  // Create PDF
+  const pdfDoc = await PDFDocument.create();
+  const templateBytes = await fetchBuffer(event.cardTemplate.url);
+
+  let templateImage;
+  try {
+    templateImage = await pdfDoc.embedPng(templateBytes);
+  } catch {
+    templateImage = await pdfDoc.embedJpg(templateBytes);
+  }
+
+  const { width, height } = templateImage.scale(1);
+  const page = pdfDoc.addPage([width, height]);
+
+  // Draw template background
+  page.drawImage(templateImage, { x: 0, y: 0, width, height });
+
+  // Draw guest name with outline for clarity
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const config = event.cardTemplate;
+  const nameColor = hexToRgb(config.guestNameColor || '#FFFFFF');
+  const fontSize = config.guestNameFontSize || 24;
+  const nameWidth = font.widthOfTextAtSize(guest.guestName, fontSize);
+
+  let nameX;
+  const namePctX = (config.guestNamePosition?.x || 50) / 100;
+  const namePctY = (config.guestNamePosition?.y || 85) / 100;
+
+  if (config.guestNameAlign === 'center') {
+    nameX = (width * namePctX) - (nameWidth / 2);
+  } else if (config.guestNameAlign === 'right') {
+    nameX = (width * namePctX) - nameWidth;
+  } else {
+    nameX = width * namePctX;
+  }
+
+  const nameY = height * (1 - namePctY);
+
+  // Shadow color — opposite of text color for contrast
+  const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
+    ? { r: 0, g: 0, b: 0 }
+    : { r: 1, g: 1, b: 1 };
+
+  // Draw outline first
+  const offsets = [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]];
+  for (const [ox, oy] of offsets) {
+    page.drawText(guest.guestName, {
+      x: nameX + ox, y: nameY + oy,
+      size: fontSize, font,
+      color: rgb(shadowColor.r, shadowColor.g, shadowColor.b),
+      opacity: 0.6,
+    });
+  }
+
+  // Draw main text
+  page.drawText(guest.guestName, {
+    x: nameX, y: nameY,
+    size: fontSize, font,
+    color: rgb(nameColor.r, nameColor.g, nameColor.b),
+    opacity: 1,
+  });
+
+  // Draw QR code
+  if (config.showQR !== false && guest.qrToken) {
+    const qrSize = config.qrSize || 150;
+    const qrBuffer = await generateQRCodeBuffer(guest.qrToken, { size: qrSize });
+    const qrImage = await pdfDoc.embedPng(qrBuffer);
+
+    const qrPctX = (config.qrPosition?.x || 70) / 100;
+    const qrPctY = (config.qrPosition?.y || 70) / 100;
+
+    page.drawImage(qrImage, {
+      x: width * qrPctX - qrSize / 2,
+      y: height * (1 - qrPctY) - qrSize / 2,
+      width: qrSize,
+      height: qrSize,
+    });
+
+    // Draw ticket label above QR
+    const labelFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const label = guest.ticketLabel || guest.ticketType.toUpperCase();
+    const labelSize = 14;
+    const labelWidth = labelFont.widthOfTextAtSize(label, labelSize);
+    page.drawText(label, {
+      x: width * qrPctX - labelWidth / 2,
+      y: height * (1 - qrPctY) + qrSize / 2 + 5,
+      size: labelSize,
+      font: labelFont,
+      color: rgb(nameColor.r, nameColor.g, nameColor.b),
+    });
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  const pdfBuffer = Buffer.from(pdfBytes);
+
+  const result = await uploadToCloudinary(pdfBuffer, {
+    folder: `cardpro/events/${event._id}/cards`,
+    public_id: `card_${guest._id}`,
+    resource_type: 'image',
+    format: 'jpg',
+    transformation: [{ quality: 'auto:best', dpr: '2.0' }],
+  });
+
+  guest.cardUrl = result.secure_url;
+  guest.cardPublicId = result.public_id;
+  await guest.save({ validateBeforeSave: false });
+
+  await logActivity({
+    event: event._id,
+    action: 'generate_card',
+    description: `Card generated for guest "${guest.guestName}"`,
+    req,
+  });
+
+  res.json({ success: true, guest, cardUrl: result.secure_url });
+});
+
+exports.generateAllCards = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+  const event = await Event.findById(eventId);
+  if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+  if (!event.cardTemplate?.url) {
+    return res.status(400).json({ success: false, message: 'No card template uploaded.' });
+  }
+
+  // Support ?newOnly=true to only generate cards for guests without existing cards
+  const newOnly = req.query.newOnly === 'true';
+
+  const filter = { event: eventId, isDeleted: false };
+  if (newOnly) {
+    filter.$or = [
+      { cardUrl: { $exists: false } },
+      { cardUrl: null },
+      { cardUrl: '' },
+    ];
+  }
+
+  const allGuests = await Guest.find({ event: eventId, isDeleted: false });
+  const guests    = newOnly
+    ? allGuests.filter(g => !g.cardUrl)
+    : allGuests;
+
+  if (guests.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: newOnly
+        ? 'All guests already have cards. Use "Generate All Cards" to regenerate with new settings.'
+        : 'No guests found.',
+    });
+  }
+
+  // Block if no QR tokens exist at all
+  const guestsWithQR = guests.filter(g => g.qrToken);
+  if (guestsWithQR.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Guests have no QR codes yet. Please generate QR codes first before generating cards.',
+      hint: 'Click "Generate QR Codes" in Guest List first.',
+    });
+  }
+
+  const guestsWithoutQR = guests.filter(g => !g.qrToken).length;
+  if (guestsWithoutQR > 0) {
+    console.warn(`Warning: ${guestsWithoutQR}/${guests.length} guests have no QR token — their cards will skip QR.`);
+  }
+
+  // Return immediately — process in background
+  res.json({
+    success: true,
+    message: newOnly
+      ? `Generating ${guests.length} new cards in background.`
+      : `Generating ${guests.length} cards in background.`,
+    total: guests.length,
+    newOnly,
+    withQR: guestsWithQR.length,
+    withoutQR: guests.length - guestsWithQR.length,
+  });
+
+  // Init progress
+  cardGenProgress[eventId] = { status: 'running', total: guests.length, done: 0, failed: 0 };
+
+  // Process in background after response
+  setImmediate(async () => {
+    let generated = 0;
+    const errors = [];
+
+    // Fetch template once (cache it)
+    let templateBytes;
+    try {
+      templateBytes = await fetchBuffer(event.cardTemplate.url);
+    } catch (err) {
+      console.error('Failed to fetch template:', err.message);
+      return;
+    }
+
+    for (const guest of guests) {
+      try {
+        const pdfDoc = await PDFDocument.create();
+
+        let templateImage;
+        try { templateImage = await pdfDoc.embedPng(templateBytes); }
+        catch { templateImage = await pdfDoc.embedJpg(templateBytes); }
+
+        const { width, height } = templateImage.scale(1);
+        const page = pdfDoc.addPage([width, height]);
+        page.drawImage(templateImage, { x: 0, y: 0, width, height });
+
+        const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const config = event.cardTemplate;
+        const nameColor = hexToRgb(config.guestNameColor || '#FFFFFF');
+        const fontSize = config.guestNameFontSize || 24;
+        const nameWidth = font.widthOfTextAtSize(guest.guestName, fontSize);
+        const namePctX = (config.guestNamePosition?.x || 50) / 100;
+        const namePctY = (config.guestNamePosition?.y || 85) / 100;
+        const nameX = config.guestNameAlign === 'center'
+          ? (width * namePctX) - (nameWidth / 2)
+          : config.guestNameAlign === 'right'
+            ? (width * namePctX) - nameWidth
+            : width * namePctX;
+        const nameY = height * (1 - namePctY);
+
+        // Shadow outline
+        const shadowColor = nameColor.r + nameColor.g + nameColor.b > 1.5
+          ? { r: 0, g: 0, b: 0 } : { r: 1, g: 1, b: 1 };
+        const offsets = [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]];
+        for (const [ox, oy] of offsets) {
+          page.drawText(guest.guestName, { x: nameX+ox, y: nameY+oy, size: fontSize, font, color: rgb(shadowColor.r, shadowColor.g, shadowColor.b), opacity: 0.6 });
+        }
+        page.drawText(guest.guestName, { x: nameX, y: nameY, size: fontSize, font, color: rgb(nameColor.r, nameColor.g, nameColor.b), opacity: 1 });
+
+        if (config.showQR !== false && guest.qrToken) {
+          const qrSize = config.qrSize || 150;
+          const qrBuffer = await generateQRCodeBuffer(guest.qrToken, { size: qrSize });
+          const qrImage = await pdfDoc.embedPng(qrBuffer);
+          const qrPctX = (config.qrPosition?.x || 70) / 100;
+          const qrPctY = (config.qrPosition?.y || 70) / 100;
+          page.drawImage(qrImage, {
+            x: width * qrPctX - qrSize / 2,
+            y: height * (1 - qrPctY) - qrSize / 2,
+            width: qrSize, height: qrSize,
+          });
+
+          // Draw ticket label above QR
+          const labelFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+          const label = guest.ticketLabel || guest.ticketType.toUpperCase();
+          const labelSize = 14;
+          const labelWidth = labelFont.widthOfTextAtSize(label, labelSize);
+          page.drawText(label, {
+            x: width * qrPctX - labelWidth / 2,
+            y: height * (1 - qrPctY) + qrSize / 2 + 5,
+            size: labelSize,
+            font: labelFont,
+            color: rgb(nameColor.r, nameColor.g, nameColor.b),
+          });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const result = await uploadToCloudinary(Buffer.from(pdfBytes), {
+          folder: `cardpro/events/${eventId}/cards`,
+          public_id: `card_${guest._id}`,
+          format: 'jpg',
+          resource_type: 'image',
+          transformation: [{ quality: 'auto:good', dpr: '1.5' }],
+        });
+
+        guest.cardUrl = result.secure_url;
+        guest.cardPublicId = result.public_id;
+        await guest.save({ validateBeforeSave: false });
+        generated++;
+        cardGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
+      } catch (err) {
+        errors.push({ guest: guest.guestName, error: err.message });
+        cardGenProgress[eventId] = { status: 'running', total: guests.length, done: generated, failed: errors.length };
+        console.error(`Card gen failed for ${guest.guestName}:`, err.message);
+      }
+    }
+
+    cardGenProgress[eventId] = { status: 'done', total: guests.length, done: generated, failed: errors.length };
+    console.log(`Card generation complete: ${generated}/${guests.length} generated, ${errors.length} errors`);
+    // Auto-clear progress after 5 minutes
+    setTimeout(() => { delete cardGenProgress[eventId]; }, 5 * 60 * 1000);
+  });
+});
+
+exports.downloadCardPDF = asyncHandler(async (req, res) => {
+  const guest = await Guest.findById(req.params.id);
+  if (!guest || !guest.cardUrl) {
+    return res.status(404).json({ success: false, message: 'Card not found. Generate the card first.' });
+  }
+
+  await logActivity({
+    event: guest.event,
+    action: 'download_pdf',
+    description: `Card PDF downloaded for guest "${guest.guestName}"`,
+    req,
+  });
+
+  res.json({ success: true, cardUrl: guest.cardUrl });
+});

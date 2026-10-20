@@ -1,0 +1,262 @@
+═══════════════════════════════════════════════════════════════════
+  📱 WHATSAPP ERROR MESSAGES - BEFORE vs AFTER
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 1: Template Not Approved Yet
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE (Generic):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ Failed to send WhatsApp message                      │
+└─────────────────────────────────────────────────────────┘
+
+User thinks: "What? Why? What should I do?"
+
+
+✅ AFTER (Detailed):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ WhatsApp template not found or not approved yet.     │
+│                                                         │
+│  💡 Suggestion: Wait for template approval (1-3 days)   │
+│     or use Custom Text mode instead.                    │
+│                                                         │
+│  Code: 20404                                            │
+└─────────────────────────────────────────────────────────┘
+
+User knows: "Ah! Template bado review. Nitumia SMS kwanza!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 2: Guest Not on WhatsApp
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE (Misleading):
+┌─────────────────────────────────────────────────────────┐
+│  ✅ WhatsApp message sent successfully.                  │
+└─────────────────────────────────────────────────────────┘
+
+Guest: "Sikupata message yoyote!"
+User: "Lakini system inasema sent! 🤔"
+
+
+✅ AFTER (Honest):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ This phone number is not enabled for WhatsApp       │
+│     or does not have WhatsApp.                          │
+│                                                         │
+│  💡 Suggestion: Use SMS instead, or verify the guest    │
+│     has WhatsApp installed.                             │
+│                                                         │
+│  Code: 21608                                            │
+└─────────────────────────────────────────────────────────┘
+
+User knows: "Namba hii haina WhatsApp. Nitatumia SMS!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 3: Twilio Balance Empty
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE (Confusing):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ Error sending message                                │
+└─────────────────────────────────────────────────────────┘
+
+User: "Ni nini? Network? Server? Configuration?"
+
+
+✅ AFTER (Clear):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ 💰 Insufficient Twilio balance.                      │
+│                                                         │
+│  💡 Suggestion: Top up your Twilio account at           │
+│     console.twilio.com/billing                          │
+│                                                         │
+│  Code: 20429                                            │
+└─────────────────────────────────────────────────────────┘
+
+User: "Balance imeisha! Nitaongeza $20 sasa!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 4: Wrong Phone Format
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE (No info):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ Failed to send                                       │
+└─────────────────────────────────────────────────────────┘
+
+
+✅ AFTER (Helpful):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ 📞 Invalid phone number format.                      │
+│                                                         │
+│  💡 Suggestion: Check guest phone number:               │
+│     Must be in format +255XXXXXXXXX                     │
+│                                                         │
+│  Code: 21211                                            │
+└─────────────────────────────────────────────────────────┘
+
+User: "Namba ina format mbaya. Nitarekebu!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 5: Sandbox Not Joined
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE (Silent fail):
+┌─────────────────────────────────────────────────────────┐
+│  ✅ Sent successfully                                    │
+└─────────────────────────────────────────────────────────┘
+
+(But guest never receives anything!)
+
+
+✅ AFTER (Explains why):
+┌─────────────────────────────────────────────────────────┐
+│  ❌ 📱 Recipient has not joined WhatsApp Sandbox        │
+│     or WhatsApp Business API not enabled.               │
+│                                                         │
+│  💡 Suggestion: Either:                                 │
+│     1) Wait for WhatsApp Business approval              │
+│     2) Ask guest to send "join <code>" to sandbox       │
+│                                                         │
+│  Code: 63016                                            │
+└─────────────────────────────────────────────────────────┘
+
+User: "Ah! Nisubiri approval ya Business API. SMS kwanza!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 6: Rate Limit Hit
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE:
+┌─────────────────────────────────────────────────────────┐
+│  ❌ Error                                                │
+└─────────────────────────────────────────────────────────┘
+
+
+✅ AFTER:
+┌─────────────────────────────────────────────────────────┐
+│  ❌ ⏱️ Too many messages sent. Rate limit exceeded.      │
+│                                                         │
+│  💡 Suggestion: Wait a few minutes and try again.       │
+│     System sends 1 message per 1.2 seconds.             │
+│                                                         │
+│  Code: 429                                              │
+└─────────────────────────────────────────────────────────┘
+
+User: "Nimesend haraka sana. Nisubiri 5 min!"
+
+═══════════════════════════════════════════════════════════════════
+
+SCENARIO 7: Bulk Send (Mixed Results)
+─────────────────────────────────────────────────────────────────
+
+❌ BEFORE:
+┌─────────────────────────────────────────────────────────┐
+│  WhatsApp: 450 sent, 50 failed                          │
+└─────────────────────────────────────────────────────────┘
+
+User: "Mbona 50 failed? Ni nini?"
+
+
+✅ AFTER:
+┌─────────────────────────────────────────────────────────┐
+│  WhatsApp: 450 sent, 50 failed                          │
+│                                                         │
+│  First error: This phone number is not enabled          │
+│  for WhatsApp                                           │
+│                                                         │
+│  💡 Check Activity Log for full details                 │
+└─────────────────────────────────────────────────────────┘
+
+User: "50 wale hawana WhatsApp. Nitawatumia SMS!"
+
+═══════════════════════════════════════════════════════════════════
+
+BENEFITS FOR USER:
+═══════════════════════════════════════════════════════════════════
+
+✅ KNOWS EXACTLY WHAT WENT WRONG
+   No more guessing or confusion
+
+✅ KNOWS HOW TO FIX IT
+   Clear actionable suggestions
+
+✅ CAN MAKE DECISIONS
+   Use SMS? Wait? Fix phone numbers?
+
+✅ SAVES TIME
+   No need to check logs or debug
+
+✅ BUILDS TRUST
+   System is honest about failures
+
+✅ REDUCES SUPPORT REQUESTS
+   Self-service problem solving
+
+═══════════════════════════════════════════════════════════════════
+
+TECHNICAL IMPROVEMENTS:
+═══════════════════════════════════════════════════════════════════
+
+Backend:
+✅ Try-catch blocks for all WhatsApp sends
+✅ Parse Twilio error codes into user-friendly messages
+✅ Update guest.messageStatus to "failed" (not "sent")
+✅ Log errors with full details in Activity Log
+✅ Return HTTP status codes (400, 401, 404, 429, etc.)
+
+Frontend:
+✅ Display error message + suggestion in toast
+✅ Show error code for debugging
+✅ Extended toast duration (8 seconds) for reading
+✅ For bulk sends, show summary + first error
+✅ Rich formatted error toasts with proper styling
+
+═══════════════════════════════════════════════════════════════════
+
+ERROR CODES HANDLED:
+═══════════════════════════════════════════════════════════════════
+
+Authentication & Config:
+  20003 - Invalid credentials
+  20404 - Template not found
+
+WhatsApp-specific:
+  63016 - Sandbox not joined
+  63032 - Template not approved
+  63033 - Outside customer service window
+
+Phone Number Issues:
+  21211 - Invalid format
+  21608 - Not on WhatsApp
+  21610 - Number blocked sender
+
+Balance & Limits:
+  20429 - Insufficient balance
+  429   - Rate limit exceeded
+
+Network:
+  ETIMEDOUT - Request timeout
+  ENOTFOUND - Cannot connect
+
+═══════════════════════════════════════════════════════════════════
+
+USER EXPERIENCE FLOW:
+═══════════════════════════════════════════════════════════════════
+
+BEFORE:
+  Send WhatsApp → "Sent!" → Guest: "Sijapata!" → Confusion! 😕
+
+AFTER:
+  Send WhatsApp → Error Message → Read Suggestion → Take Action! ✅
+
+═══════════════════════════════════════════════════════════════════
+
+Version: 2.0.0
+Last Updated: December 11, 2026
+Status: Deployed to GitHub ✅

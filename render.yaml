@@ -1,0 +1,52 @@
+services:
+  # Backend API
+  - type: web
+    name: cardpro-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: BEEM_API_KEY
+        sync: false
+      - key: BEEM_SECRET_KEY
+        sync: false
+      - key: BEEM_SENDER_ID
+        value: CARDPRO
+      - key: ADMIN_USERNAME
+        value: Cardpro
+      - key: ADMIN_PASSWORD
+        sync: false
+
+  # Frontend - Web Service (serves React SPA with proper routing)
+  - type: web
+    name: cardpro-client
+    env: node
+    rootDir: client
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false
+      - key: NODE_ENV
+        value: production

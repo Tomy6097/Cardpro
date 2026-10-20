@@ -1,0 +1,189 @@
+═══════════════════════════════════════════════════════════════════
+  📱 TWILIO WHATSAPP TEMPLATE - COPY & PASTE GUIDE
+═══════════════════════════════════════════════════════════════════
+
+🔗 GO TO: https://console.twilio.com/us1/develop/sms/content-editor
+
+═══════════════════════════════════════════════════════════════════
+  1️⃣ BASIC INFORMATION
+═══════════════════════════════════════════════════════════════════
+
+Template Name:        cardpro_wedding_invitation
+Friendly Name:        CardPro Wedding Invitation
+Language:             sw (Swahili)
+Category:             UTILITY ⚠️ (NOT Marketing!)
+Channel:              WhatsApp
+
+═══════════════════════════════════════════════════════════════════
+  2️⃣ HEADER SECTION
+═══════════════════════════════════════════════════════════════════
+
+Click: "+ Add header"
+Type: Media → Image
+Variable: Click "Add variable" button (creates {{1}} automatically)
+
+Sample Image URL (paste this):
+https://res.cloudinary.com/demo/image/upload/sample.jpg
+
+═══════════════════════════════════════════════════════════════════
+  3️⃣ BODY TEXT (COPY THIS EXACTLY!)
+═══════════════════════════════════════════════════════════════════
+
+Mpendwa {{1}},
+
+{{2}} wanayo furaha kukualika kwenye harusi yao!
+
+📅 Tarehe: {{3}}
+📍 Mahali: {{4}}
+👔 Dress Code: {{5}}
+
+Tafadhali thibitisha kuhudhuria kwa kubofya button hapa chini.
+
+Code yako: {{6}}
+
+⚠️ IMPORTANT: Don't type {{1}}, {{2}} etc manually!
+   - Paste the text WITHOUT variables
+   - Then click "Add variable" button where each variable should go
+   - Twilio will insert them in correct order
+
+═══════════════════════════════════════════════════════════════════
+  📝 BODY TEXT (Plain - for copy-paste, add variables manually)
+═══════════════════════════════════════════════════════════════════
+
+Mpendwa [CLICK ADD VARIABLE],
+
+[CLICK ADD VARIABLE] wanayo furaha kukualika kwenye harusi yao!
+
+📅 Tarehe: [CLICK ADD VARIABLE]
+📍 Mahali: [CLICK ADD VARIABLE]
+👔 Dress Code: [CLICK ADD VARIABLE]
+
+Tafadhali thibitisha kuhudhuria kwa kubofya button hapa chini.
+
+Code yako: [CLICK ADD VARIABLE]
+
+═══════════════════════════════════════════════════════════════════
+  4️⃣ FOOTER (Optional but recommended)
+═══════════════════════════════════════════════════════════════════
+
+Click: "+ Add footer"
+Text: Powered by CardPro Events
+
+═══════════════════════════════════════════════════════════════════
+  5️⃣ BUTTON
+═══════════════════════════════════════════════════════════════════
+
+Click: "+ Add button"
+Type: URL (Call to Action)
+Button Text: Thibitisha Kuhudhuria
+URL: Click "Add variable" (creates {{7}})
+
+Example URL (for preview):
+https://cardpro-app.onrender.com/event/test
+
+═══════════════════════════════════════════════════════════════════
+  ✅ VARIABLE MAPPING (What backend will send)
+═══════════════════════════════════════════════════════════════════
+
+HEADER IMAGE (shown above body):
+  - Card image URL handled automatically by Twilio
+
+BODY VARIABLES:
+  {{1}} = Guest Name              Example: John Doe
+  {{2}} = Client Name             Example: James & Anna
+  {{3}} = Date & Time             Example: Jumamosi, 22 Desemba 2026
+  {{4}} = Venue                   Example: Golden Tulip Hotel
+  {{5}} = Dress Code              Example: White and Black
+  {{6}} = Verification Code       Example: CP7821
+
+BUTTON VARIABLE:
+  {{7}} = Confirmation URL        Example: https://cardpro.app/event/...
+
+═══════════════════════════════════════════════════════════════════
+  📸 HOW IT WILL LOOK
+═══════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────┐
+│  [WEDDING CARD IMAGE - HEADER]       │
+├─────────────────────────────────────┤
+│ Mpendwa John Doe,                   │
+│                                     │
+│ James & Anna wanayo furaha          │
+│ kukualika kwenye harusi yao!        │
+│                                     │
+│ 📅 Tarehe: Jumamosi, 22 Desemba    │
+│    2026 · Saa 3:00 PM              │
+│ 📍 Mahali: Golden Tulip Hotel      │
+│ 👔 Dress Code: White and Black     │
+│                                     │
+│ Tafadhali thibitisha kuhudhuria    │
+│ kwa kubofya button hapa chini.      │
+│                                     │
+│ Code yako: CP7821                   │
+├─────────────────────────────────────┤
+│ Powered by CardPro Events           │
+├─────────────────────────────────────┤
+│  [Thibitisha Kuhudhuria] 🔗         │
+└─────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+  🚀 AFTER CREATING TEMPLATE
+═══════════════════════════════════════════════════════════════════
+
+1. Click "Submit for approval"
+2. Wait 1-3 business days for Meta approval
+3. Check status: Twilio Console → Content Templates
+4. After approval, copy the Content SID (starts with HX...)
+5. Add to your .env file:
+
+   TWILIO_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+6. Restart your server
+7. Test with: POST /api/invitations/test-whatsapp
+
+═══════════════════════════════════════════════════════════════════
+  ⚠️ COMMON MISTAKES TO AVOID
+═══════════════════════════════════════════════════════════════════
+
+❌ DON'T manually type {{1}} in body
+✅ DO use "Add variable" button
+
+❌ DON'T choose "Marketing" category
+✅ DO choose "UTILITY" category
+
+❌ DON'T use random emoji everywhere
+✅ DO use only standard emoji (📅 📍 👔)
+
+❌ DON'T make body text too long (>1024 chars)
+✅ DO keep it concise and clear
+
+❌ DON'T add multiple buttons
+✅ DO use only ONE button
+
+═══════════════════════════════════════════════════════════════════
+  📞 NEED HELP?
+═══════════════════════════════════════════════════════════════════
+
+Twilio Support: https://support.twilio.com
+Template Docs: https://www.twilio.com/docs/content
+WhatsApp Rules: https://developers.facebook.com/docs/whatsapp
+
+═══════════════════════════════════════════════════════════════════
+  ⏱️ TIMELINE
+═══════════════════════════════════════════════════════════════════
+
+Today:              Create template
+Day 1-3:            Wait for approval ⏳
+After approval:     Get Content SID
+Same day:           Add to .env & test
+Next day:           Send to all guests! 🎉
+
+═══════════════════════════════════════════════════════════════════
+
+✅ Template structure updated in backend
+✅ Variables correctly mapped (1-7)
+✅ Ready for testing after approval
+
+Good luck with your wedding! 💒🎊
+
+═══════════════════════════════════════════════════════════════════
