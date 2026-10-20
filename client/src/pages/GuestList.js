@@ -36,28 +36,34 @@ const WhatsAppShareModal = ({ guest, event, onClose }) => {
   // Build filled message every render based on current guest/event
   const buildMessage = () => {
     if (!guest || !savedTemplate) return savedTemplate || '';
+    const guestName = guest.guestName || guest.name || '';
     const venue = event?.venue || '';
     const dressCode = event?.dressCode || event?.dress_code || '';
     const slug = event?.slug || '';
+    const eventName = event?.name || '';
     const confirmUrl = slug && guest.verificationCode
       ? `${window.location.origin}/event/${slug}?code=${guest.verificationCode}` : '';
     let dateFmt = '';
     if (event?.date) {
       try { dateFmt = new Date(event.date).toLocaleDateString('sw-TZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
-      catch { dateFmt = event.date; }
+      catch { dateFmt = String(event.date); }
     }
+    // Replace both {var} and { var } patterns to handle any spacing issues
     return savedTemplate
-      .replace(/{guestName}/g, guest.guestName || '')
-      .replace(/{eventName}/g, event?.name || '')
-      .replace(/{date}/g, dateFmt)
-      .replace(/{venue}/g, venue)
-      .replace(/{dressCode}/g, dressCode)
-      .replace(/{confirmUrl}/g, confirmUrl)
-      .replace(/{verificationCode}/g, guest.verificationCode || '');
+      .replace(/\{\s*guestName\s*\}/g, guestName)
+      .replace(/\{\s*eventName\s*\}/g, eventName)
+      .replace(/\{\s*date\s*\}/g, dateFmt)
+      .replace(/\{\s*venue\s*\}/g, venue)
+      .replace(/\{\s*dressCode\s*\}/g, dressCode)
+      .replace(/\{\s*confirmUrl\s*\}/g, confirmUrl)
+      .replace(/\{\s*verificationCode\s*\}/g, guest.verificationCode || '');
   };
 
   // Always recompute when guest changes (no stale useState)
   const filledMessage = buildMessage();
+
+  // Debug — remove after fix (check browser console F12)
+  if (guest) console.log('[WA Modal] guest:', JSON.stringify({guestName: guest.guestName, phone: guest.phone, verificationCode: guest.verificationCode}), 'event:', JSON.stringify({name: event?.name, date: event?.date, venue: event?.venue}));
 
   // Early return AFTER all hooks
   if (!guest) return null;
