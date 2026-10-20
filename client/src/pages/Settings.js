@@ -14,6 +14,9 @@ const Settings = () => {
   const [settingsForm, setSettingsForm] = useState({});
   const [scannerModal, setScannerModal] = useState(false);
   const [scannerForm, setScannerForm] = useState({ username: '', password: '', fullName: '', assignedEvents: [] });
+  const [editScannerModal, setEditScannerModal] = useState(false);
+  const [editScannerData, setEditScannerData] = useState(null); // scanner being edited
+  const [editScannerEvents, setEditScannerEvents] = useState([]);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [waTestResult, setWaTestResult] = useState(null); // { success, messageSid, status, message, troubleshoot }
   const [waTestLoading, setWaTestLoading] = useState(false);
@@ -73,6 +76,17 @@ const Settings = () => {
     mutationFn: usersAPI.deleteScanner,
     onSuccess: () => { refetchScanners(); toast.success('Scanner deleted.'); },
     onError: (err) => toast.error(err.message),
+  });
+
+  const updateScannerMutation = useMutation({
+    mutationFn: ({ id, data }) => usersAPI.updateScanner(id, data),
+    onSuccess: () => {
+      refetchScanners();
+      toast.success('Scanner updated.');
+      setEditScannerModal(false);
+      setEditScannerData(null);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || err.message),
   });
   
   // ✅ NEW: WhatsApp Template mutations
@@ -629,6 +643,15 @@ const Settings = () => {
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                     {s.assignedEvents?.length || 0} events
                   </span>
+                  <button
+                    onClick={() => {
+                      setEditScannerData(s);
+                      setEditScannerEvents(s.assignedEvents?.map(e => e._id || e) || []);
+                      setEditScannerModal(true);
+                    }}
+                    style={{ padding: '6px 12px', border: '1px solid #C7D2FE', borderRadius: 'var(--radius-sm)', background: '#EEF2FF', color: '#4338CA', fontSize: '12px', cursor: 'pointer' }}>
+                    Edit
+                  </button>
                   <button onClick={() => { if (window.confirm(`Delete scanner ${s.username}?`)) deleteScannerMutation.mutate(s._id); }}
                     style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: 'var(--danger-light)', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer' }}>
                     Delete
@@ -798,6 +821,49 @@ const Settings = () => {
                   }}
                 />
                 {ev.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Scanner Modal */}
+      <Modal
+        isOpen={editScannerModal}
+        onClose={() => { setEditScannerModal(false); setEditScannerData(null); }}
+        title={`Edit Scanner: ${editScannerData?.username || ''}`}
+        width="480px"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setEditScannerModal(false); setEditScannerData(null); }}>Cancel</Button>
+            <Button variant="primary" loading={updateScannerMutation.isPending} onClick={() => {
+              if (!editScannerData) return;
+              updateScannerMutation.mutate({ id: editScannerData._id, data: { assignedEvents: editScannerEvents } });
+            }}>Save Changes</Button>
+          </>
+        }
+      >
+        <div style={{ marginBottom: '12px', padding: '10px 14px', background: 'var(--cream)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <strong>@{editScannerData?.username}</strong> — {editScannerData?.fullName || 'No name'}
+        </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+            Assigned Events
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+            {events.map(ev => (
+              <label key={ev._id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '6px 8px', borderRadius: 'var(--radius-sm)', background: editScannerEvents.includes(ev._id) ? 'var(--cream-dark)' : 'transparent' }}>
+                <input
+                  type="checkbox"
+                  checked={editScannerEvents.includes(ev._id)}
+                  onChange={e => {
+                    const arr = [...editScannerEvents];
+                    if (e.target.checked) arr.push(ev._id);
+                    else arr.splice(arr.indexOf(ev._id), 1);
+                    setEditScannerEvents(arr);
+                  }}
+                />
+                <span style={{ fontWeight: editScannerEvents.includes(ev._id) ? 600 : 400, color: 'var(--primary-dark)' }}>{ev.name}</span>
               </label>
             ))}
           </div>
