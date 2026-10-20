@@ -29,13 +29,12 @@ const emptyEditForm = { guestName: '', phone: '', email: '', ticketType: 'Single
 
 // ─── WhatsApp Share Modal ──────────────────────────────────────────────────
 const WhatsAppShareModal = ({ guest, event, onClose }) => {
-  if (!guest) return null;
   const eventId = event?._id || event?.id || '';
   const waKey = `cardpro_wa_template_${eventId}`;
   const savedTemplate = localStorage.getItem(waKey) || '';
 
   const fillTemplate = (tmpl) => {
-    if (!tmpl) return '';
+    if (!tmpl || !guest) return '';
     const venue = event?.venue || '';
     const dressCode = event?.dressCode || event?.dress_code || '';
     const slug = event?.slug || '';
@@ -57,6 +56,9 @@ const WhatsAppShareModal = ({ guest, event, onClose }) => {
   };
 
   const [message, setMessage] = React.useState(() => fillTemplate(savedTemplate));
+
+  // Early return AFTER all hooks
+  if (!guest) return null;
 
   const formatPhone = (phone) => {
     if (!phone) return '';
