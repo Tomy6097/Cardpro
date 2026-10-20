@@ -62,9 +62,6 @@ const WhatsAppShareModal = ({ guest, event, onClose }) => {
   // Always recompute when guest changes (no stale useState)
   const filledMessage = buildMessage();
 
-  // Debug — remove after fix (check browser console F12)
-  if (guest) console.log('[WA Modal] guest:', JSON.stringify({guestName: guest.guestName, phone: guest.phone, verificationCode: guest.verificationCode}), 'event:', JSON.stringify({name: event?.name, date: event?.date, venue: event?.venue}));
-
   // Early return AFTER all hooks
   if (!guest) return null;
 
