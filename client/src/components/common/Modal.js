@@ -2,8 +2,13 @@ import React, { useEffect } from 'react';
 
 const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) => {
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      // Scroll page to top so modal is visible without scrolling
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      document.body.style.overflow = '';
+    }
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
@@ -21,16 +26,20 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
         }}
       />
 
-      {/* Outer wrapper — flex centering */}
+      {/* Outer wrapper — positioned at top center */}
       <div style={{
         position: 'fixed',
         inset: 0,
         zIndex: 1000,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '16px',
+        paddingTop: '40px',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingBottom: '16px',
         pointerEvents: 'none',
+        overflowY: 'auto',
       }}>
         {/* Modal box */}
         <div
@@ -38,7 +47,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
           style={{
             pointerEvents: 'all',
             width: `min(${width}, calc(100vw - 32px))`,
-            maxHeight: 'calc(100vh - 32px)',
+            maxHeight: 'calc(100vh - 80px)',
             display: 'flex',
             flexDirection: 'column',
             background: 'var(--white)',
@@ -46,6 +55,7 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
             boxShadow: '0 24px 60px rgba(26,10,0,0.3)',
             animation: 'modalIn 0.18s ease',
             overflow: 'hidden',
+            flexShrink: 0,
           }}
         >
           {/* Header */}
@@ -100,8 +110,8 @@ const Modal = ({ isOpen, onClose, title, children, width = '520px', footer }) =>
 
       <style>{`
         @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.97); }
-          to   { opacity: 1; transform: scale(1); }
+          from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </>
