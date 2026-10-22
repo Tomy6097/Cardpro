@@ -308,9 +308,36 @@ const EventWebsite = () => {
   useEffect(() => {
     if (!event?.date) return;
     const calc = () => {
-      const eventTime = new Date(event.date).getTime();
-      const now       = new Date().getTime();
-      const diff      = eventTime - now;
+      // Combine date + time properly — event.time is stored separately e.g. "18:00" or "6:00 PM"
+      let eventTime;
+      if (event.time) {
+        try {
+          // Parse the date part
+          const datePart = new Date(event.date).toISOString().split('T')[0]; // "2026-10-22"
+          // Normalize time string: "6:00 PM" → "18:00", "18:00" → "18:00"
+          let timePart = event.time.trim();
+          const pmMatch = timePart.match(/(\d{1,2}):(\d{2})\s*([APap][Mm])/);
+          if (pmMatch) {
+            let h = parseInt(pmMatch[1]);
+            const m = pmMatch[2];
+            const meridiem = pmMatch[3].toUpperCase();
+            if (meridiem === 'PM' && h < 12) h += 12;
+            if (meridiem === 'AM' && h === 12) h = 0;
+            timePart = `${String(h).padStart(2,'0')}:${m}`;
+          }
+          // Combine date + time in local timezone
+          eventTime = new Date(`${datePart}T${timePart}:00`).getTime();
+          // If invalid, fallback to date only
+          if (isNaN(eventTime)) eventTime = new Date(event.date).getTime();
+        } catch {
+          eventTime = new Date(event.date).getTime();
+        }
+      } else {
+        eventTime = new Date(event.date).getTime();
+      }
+
+      const now        = new Date().getTime();
+      const diff       = eventTime - now;
       const hoursAfter = (now - eventTime) / (1000 * 60 * 60);
 
       if (hoursAfter > 12) {
